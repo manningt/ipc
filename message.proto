@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "nanopb.proto";
+
+message b_status { 
+    bool Active = 1; 
+    bool Status = 2; 
+    string Condition = 4 [(nanopb).max_size = 64]; 
+}
