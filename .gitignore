@@ -2,3 +2,4 @@
 *.dSYM
 *.pb*
 Makefile
+ipc_1_test
