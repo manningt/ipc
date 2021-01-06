@@ -6,8 +6,6 @@ extern "C" {
 #define IPC_1_H
 
 #include <stdbool.h>
-#include <stdint.h>
-
 #include <pthread.h>
 #include "mylog.h"
 
@@ -52,7 +50,6 @@ static const char *METHOD_STRING[] = {
 
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
-
 typedef struct ipc_class {
   int (*init)(struct ipc_class *self,  char * my_proc_name, char * other_proc_name);
   bool initialized;
@@ -63,10 +60,11 @@ typedef struct ipc_class {
   char fifo_fname_write[(2*FIFO_NAME_LENGTH)+12];
   uint32_t num_write_msgs;
   uint32_t num_read_msgs;
+  uint32_t num_bad_msgs;
 
   pthread_t open_fifo_thread;
   // zlog_category_t *module_category;
-  // int handle;
+  char plog_string[80];
 } ipc_class_t;
 
 int ipc_init(ipc_class_t *ipc_id, char * from, char * to);
@@ -75,7 +73,7 @@ int ipc_msg_poll(ipc_class_t *ipc_id);
 int ipc_send(ipc_class_t *this_ipc, method_t method, resource_t resource, int response_status, \
   uint8_t pbbuffer_len, uint8_t * pbbuffer);
 int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *rsrc_e, int * response_int, \
-  uint8_t pbbuffer_len, uint8_t pbbuffer[]);
+  int * pbbuffer_len, uint8_t pbbuffer[]);
 
 #endif
 

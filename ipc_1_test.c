@@ -10,7 +10,6 @@
 #include <pb_decode.h>
 #include "message.pb.h"
 
-
 // the following macro strips the path, leaving just the filename does not strip the .c suffix
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
@@ -72,6 +71,7 @@ int main(int argc, char *argv[])
   LOG_INIT_CATEGORY(__FILENAME__);
 */
   ipc_class_t ipc_desc;
+  ipc_desc.initialized = 0;
   if (ipc_init(&ipc_desc, my_name_ptr, other_name_ptr) < 0)
   {
     LOG_FATAL(module_category, "ipc init failed!");
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
   LOG_DEBUG(module_category, "ipc FIFOs connected.");
 
   uint8_t pbbuffer[MAX_MESSAGE_SIZE] = {0}; //,  * pbbuffer_ptr = pbbuffer;
-  uint8_t pbbuffer_len = 0;
+  int pbbuffer_len = 0;
  
   // make message and encode
   b_status out_message = b_status_init_zero;
@@ -103,7 +103,8 @@ int main(int argc, char *argv[])
   }
   pbbuffer_len = stream.bytes_written;
 
-  rc = ipc_send(&ipc_desc, INVALID_METHOD, INVALID_RESOURCE, 200, pbbuffer_len, pbbuffer);
+  // rc = ipc_send(&ipc_desc, INVALID_METHOD, INVALID_RESOURCE, 200, pbbuffer_len, pbbuffer);
+  rc = ipc_send(&ipc_desc, PUT, STOP_, 0, 0, pbbuffer);
   if (rc != 0)
   {
     printf("Send_request failed\n");
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
   method_t method_e;
   resource_t resource_e;
   int response_int = 0;
-  rc = ipc_recv(&ipc_desc, &method_e, &resource_e, &response_int, pbbuffer_len, pbbuffer);
+  rc = ipc_recv(&ipc_desc, &method_e, &resource_e, &response_int, &pbbuffer_len, pbbuffer);
   if (rc > 0) 
   {
     if (method_e == INVALID_METHOD)

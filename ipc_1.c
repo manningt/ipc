@@ -34,11 +34,10 @@ static zlog_category_t* category() {
 
 void *openFifosThread(void *this_ipc) {
   ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
-  char plog_string[80] = {0};
 
   while (my_ipc->connected != 1) {
-    sprintf(plog_string, "Opening %s for reading.", my_ipc->fifo_fname_read);
-    LOG_DEBUG(module_category, plog_string);
+    sprintf(my_ipc->plog_string, "Opening %s for reading.", my_ipc->fifo_fname_read);
+    LOG_DEBUG(module_category, my_ipc->plog_string);
     my_ipc->fd_read = 0;
     while (my_ipc->fd_read < 1) {
       my_ipc->fd_read = open(my_ipc->fifo_fname_read, O_RDONLY | O_NONBLOCK);
@@ -47,8 +46,8 @@ void *openFifosThread(void *this_ipc) {
         pthread_exit(NULL);
       }
     }
-    sprintf(plog_string, "Opening %s for writing.", my_ipc->fifo_fname_write);
-    LOG_DEBUG(module_category, plog_string);
+    sprintf(my_ipc->plog_string, "Opening %s for writing.", my_ipc->fifo_fname_write);
+    LOG_DEBUG(module_category, my_ipc->plog_string);
     // LOG_DEBUG(module_category, "Opened read FIFO, now opening write FIFO");
     // open fifo for write will block until read end is opened
     my_ipc->fd_write = 0;
@@ -68,35 +67,47 @@ void *openFifosThread(void *this_ipc) {
 
 
 int ipc_init(ipc_class_t *this_ipc, char * my_proc_name , char * other_proc_name) {
-  this_ipc->initialized = 0;
-  this_ipc->connected = 0;
   int rc;
-  char plog_string[80] = {0};
-  // extern char * plog_string;
 
-  sprintf(this_ipc->fifo_fname_write, "/tmp/%sTo%s.fifo", my_proc_name, other_proc_name);
-  sprintf(plog_string, "Creating FIFO: %s", this_ipc->fifo_fname_write);
-  LOG_DEBUG(module_category, plog_string);
+  if (this_ipc->initialized == 0)
+  {
+    this_ipc->connected = 0;
+  
+    sprintf(this_ipc->fifo_fname_write, "/tmp/%sTo%s.fifo", my_proc_name, other_proc_name);
+    sprintf(this_ipc->plog_string, "Creating FIFO: %s", this_ipc->fifo_fname_write);
+    LOG_DEBUG(module_category, this_ipc->plog_string);
 
-  if (mkfifo( (char *) this_ipc->fifo_fname_write, 0666) != 0)
-    if (errno != EEXIST) { //ignore if file exists
-      perror("Error on mkfifo:");
-      return(-1);
+    if (mkfifo( (char *) this_ipc->fifo_fname_write, 0666) != 0)
+    {
+      if (errno != EEXIST)
+      { //ignore if file exists
+        perror("Error on mkfifo:");
+        return(-1);
+      }
     }
 
-  sprintf(this_ipc->fifo_fname_read, "/tmp/%sTo%s.fifo", other_proc_name, my_proc_name);
-  if (mkfifo( (char *) this_ipc->fifo_fname_read, 0666) != 0)
-    if (errno != EEXIST) {
-      perror("Error on read mkfifo:");
-      return(-1);
+    sprintf(this_ipc->fifo_fname_read, "/tmp/%sTo%s.fifo", other_proc_name, my_proc_name);
+    if (mkfifo( (char *) this_ipc->fifo_fname_read, 0666) != 0)
+    {
+      if (errno != EEXIST) {
+        perror("Error on read mkfifo:");
+        return(-1);
+      }
     }
-
-  rc = pthread_create(&this_ipc->open_fifo_thread, NULL, openFifosThread, (void *)this_ipc);
-    if (rc) {
+  this_ipc->num_read_msgs = 0;
+  this_ipc->num_write_msgs = 0;
+  this_ipc->num_bad_msgs = 0;
+  this_ipc->initialized = 1;
+  }
+  if (this_ipc->connected == 0)
+  {
+    rc = pthread_create(&this_ipc->open_fifo_thread, NULL, openFifosThread, (void *)this_ipc);
+    if (rc)
+    {
         perror("Unable to create open fifo thread: %d\n");
         return(-2);
     }
-  this_ipc->initialized = 1;
+  }
   return 0;
 }
 
@@ -162,21 +173,26 @@ int ipc_send(ipc_class_t *this_ipc, method_t method, resource_t resource, int re
   }
   else if (byte_count_sent < payload_length)
   {
-    LOG_ERROR(module_category, "Write failed - too few bytes were written");
+    sprintf(my_ipc->plog_string, "Wrote %d bytes of message: %s", byte_count_sent, payload);
+    LOG_ERROR(module_category, my_ipc->plog_string);
   }
-  else rc = 0;
-
+  else
+  {
+    this_ipc->num_write_msgs++;
+    rc = 0;
+  }
   return rc;
 }
 
 
 int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, \
-      int * response_int, uint8_t pbbuffer_len, uint8_t pbbuffer[]) {
+      int * response_int, int * pbbuffer_len, uint8_t pbbuffer[]) {
   ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
   int byte_count_rcvd;
   uint8_t buffer[MAX_MESSAGE_SIZE] = {0};
   *method_e = INVALID_METHOD;
   *resource_e = INVALID_RESOURCE;
+  *pbbuffer_len = 0;
   char response_code[4] = {0};
   bool is_response = false;
 
@@ -186,7 +202,8 @@ int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, 
   // printf("Received from FIFO: %s\n", buffer);
   if (memcmp(buffer, PROTOCOL_ID, sizeof(PROTOCOL_ID)-1) != 0)
   {
-    printf("Error: BIPC not in header!\n");
+    LOG_ERROR(module_category, "BIPC not in header.");
+    this_ipc->num_bad_msgs++;
     return -1;
   }
   memcpy(response_code, buffer+sizeof(PROTOCOL_ID), 3);
@@ -203,7 +220,10 @@ int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, 
     *method_e = INVALID_METHOD;
   } else
   {
-    printf("Unrecognized method: %s\n", buffer);
+    sprintf(this_ipc->plog_string, "Unrecognized method: %s", buffer);
+    LOG_ERROR(module_category, this_ipc->plog_string);
+    // printf("Unrecognized method: %s\n", buffer);
+    this_ipc->num_bad_msgs++;
     return -2;
   }
   if (!is_response)
@@ -219,17 +239,19 @@ int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, 
       *resource_e = STOP_;
     } else
     {
-      printf("Unrecognized resource: %s\n", buffer);
+      sprintf(this_ipc->plog_string, "Unrecognized resource: %s", buffer);
+      LOG_ERROR(module_category, this_ipc->plog_string);
+      this_ipc->num_bad_msgs++;
       return -3;
     }
   }
   if (byte_count_rcvd > BIPC_HEADER_LENGTH)
   {
-    pbbuffer_len = byte_count_rcvd - BIPC_HEADER_LENGTH;
-    memcpy(pbbuffer, buffer+BIPC_HEADER_LENGTH, pbbuffer_len);
+    *pbbuffer_len = byte_count_rcvd - BIPC_HEADER_LENGTH;
+    memcpy(pbbuffer, buffer+BIPC_HEADER_LENGTH, *pbbuffer_len);
   }
-  else pbbuffer_len = 0;
 
+  this_ipc->num_read_msgs++;
   return byte_count_rcvd;
 }
 
