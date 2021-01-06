@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h> // needed for sleep
+
 #include "ipc_1.h"
 #include "mylog.h"
 
@@ -85,19 +86,16 @@ int main(int argc, char *argv[])
 
   uint8_t pbbuffer[MAX_MESSAGE_SIZE] = {0}; //,  * pbbuffer_ptr = pbbuffer;
   uint8_t pbbuffer_len = 0;
-  // the following 2 lines to be replaced with message encode
-  // strcpy((char*) pbbuffer_ptr, "Hello its me.");
-  // pbbuffer_len = strlen((char *) pbbuffer_ptr);
-
+ 
   // make message and encode
   b_status out_message = b_status_init_zero;
-  // Create a stream that will write to our buffer. 
+  // Create a stream that will write to the buffer. 
   pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 
   out_message.Active = 0;
   out_message.Status = 1;
   sprintf(out_message.Condition, "%s-to-%s", my_name, other_name);
-  // Encode message  
+
   if (!pb_encode(&stream, b_status_fields, &out_message))
   {
       printf("Encoding failed: %s\n", PB_GET_ERROR(&stream));
@@ -105,7 +103,6 @@ int main(int argc, char *argv[])
   }
   pbbuffer_len = stream.bytes_written;
 
-  // rc = ipc_send(&ipc_desc, GET, STATU, 0, pbbuffer_len, pbbuffer);
   rc = ipc_send(&ipc_desc, INVALID_METHOD, INVALID_RESOURCE, 200, pbbuffer_len, pbbuffer);
   if (rc != 0)
   {

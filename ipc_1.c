@@ -1,5 +1,4 @@
 #include "ipc_1.h"
-#include <stdint.h>   // integer types
 #include <stdlib.h>   //for malloc
 #include <string.h>   //for zlog category string operations
 #include <assert.h>   //for zlog category
@@ -13,11 +12,6 @@
 #include <fcntl.h> // for NONBLOCK
 #include <unistd.h> // for close
 #include <poll.h>
-//#include <sys/types.h>
-
-// #include <pb_encode.h>
-// #include <pb_decode.h>
-// #include "message.pb.h"
 
 #include "mylog.h"
 
@@ -40,20 +34,27 @@ static zlog_category_t* category() {
 
 void *openFifosThread(void *this_ipc) {
   ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
+  char plog_string[80] = {0};
+
   while (my_ipc->connected != 1) {
+    sprintf(plog_string, "Opening %s for reading.", my_ipc->fifo_fname_read);
+    LOG_DEBUG(module_category, plog_string);
     my_ipc->fd_read = 0;
-    while (my_ipc->fd_read == 0) {
-      if ((my_ipc->fd_read = open(my_ipc->fifo_fname_read, O_RDONLY | O_NONBLOCK)) < 0) {
+    while (my_ipc->fd_read < 1) {
+      my_ipc->fd_read = open(my_ipc->fifo_fname_read, O_RDONLY | O_NONBLOCK);
+      if (my_ipc->fd_read < 1) {
         perror("Open read FIFO failed: ");
         pthread_exit(NULL);
       }
     }
-    LOG_DEBUG(module_category, "Opened read FIFO, now opening write FIFO");
+    sprintf(plog_string, "Opening %s for writing.", my_ipc->fifo_fname_write);
+    LOG_DEBUG(module_category, plog_string);
+    // LOG_DEBUG(module_category, "Opened read FIFO, now opening write FIFO");
     // open fifo for write will block until read end is opened
     my_ipc->fd_write = 0;
     while (my_ipc->fd_write < 1) {
       my_ipc->fd_write = open(my_ipc->fifo_fname_write, O_WRONLY | O_NONBLOCK);
-      if (my_ipc->fd_write < 0) {
+      if (my_ipc->fd_write < 1) {
         if (errno != 6) {
           perror("Open write FIFO failed: ");
           pthread_exit(NULL);
@@ -104,6 +105,9 @@ int ipc_msg_poll(ipc_class_t *this_ipc) {
   int rc = 0;
   ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
 
+  if (!my_ipc->connected)
+    return rc;
+
   struct pollfd poll_fd_read;
   poll_fd_read.fd = my_ipc->fd_read;
   poll_fd_read.events = POLLIN;
@@ -111,14 +115,13 @@ int ipc_msg_poll(ipc_class_t *this_ipc) {
   poll( &poll_fd_read, 1, 0);
   if (poll_fd_read.revents & POLLIN) {
     rc = 1;
-    // poll_fd_read.revents = 0;
   }
   return rc;
 }
 
 
 int ipc_send(ipc_class_t *this_ipc, method_t method, resource_t resource, int response_status, \
-    uint8_t pbbuffer_len, uint8_t pbbuffer[]) {
+              uint8_t pbbuffer_len, uint8_t pbbuffer[]) {
   ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
   int byte_count_sent;
   int rc = -1;
@@ -126,7 +129,7 @@ int ipc_send(ipc_class_t *this_ipc, method_t method, resource_t resource, int re
   int payload_length = 0;
   if ((method == INVALID_METHOD) && (response_status > 0))
   {
-    printf("sending response\n");
+    // printf("sending response\n");
     payload_length = BIPC_HEADER_LENGTH;
     // the +1 in the following length is to leave a byte for the null string terminator
     snprintf((char *)payload, BIPC_HEADER_LENGTH+1, "%s %3d       ", PROTOCOL_ID, response_status);
@@ -136,7 +139,6 @@ int ipc_send(ipc_class_t *this_ipc, method_t method, resource_t resource, int re
   {
     // send request header
     payload_length = BIPC_HEADER_LENGTH;
-    // the +1 in the following length is to leave a byte for the null string terminator
     snprintf((char *)payload, BIPC_HEADER_LENGTH+1, "%s %s %s ", PROTOCOL_ID, METHOD_STRING[method], RESOURCE_STRING[resource]);
   }
   else return -2;
@@ -149,10 +151,21 @@ int ipc_send(ipc_class_t *this_ipc, method_t method, resource_t resource, int re
   // printf("Before FIFO write; payload: %s -- payload len: %d\n", payload, payload_length);
   // fflush(stdout);
   byte_count_sent = write(my_ipc->fd_write, payload, payload_length);
-  if (byte_count_sent == payload_length)
+  if (byte_count_sent < 0)
   {
-    rc = 0;
+    if (errno == EPIPE)
+    {
+      my_ipc->fd_write = 0;
+      my_ipc->connected = false;
+    }
+    else perror("Error on Pipe Write: ");
   }
+  else if (byte_count_sent < payload_length)
+  {
+    LOG_ERROR(module_category, "Write failed - too few bytes were written");
+  }
+  else rc = 0;
+
   return rc;
 }
 
@@ -197,15 +210,12 @@ int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, 
   {
     if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STATU], RSRC_STRING_LENGTH))
     {
-      // printf("Resource is STATU\n");
       *resource_e = STATU;
     } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[START], RSRC_STRING_LENGTH))
     {
-      // printf("Resource is START\n");
       *resource_e = START;
     } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
     {
-      // printf("Resource is STOP_\n");
       *resource_e = STOP_;
     } else
     {

@@ -6,6 +6,8 @@ extern "C" {
 #define IPC_1_H
 
 #include <stdbool.h>
+#include <stdint.h>
+
 #include <pthread.h>
 #include "mylog.h"
 
