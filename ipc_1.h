@@ -6,6 +6,7 @@ extern "C" {
 #define IPC_1_H
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <pthread.h>
 #include "mylog.h"
 
@@ -50,10 +51,18 @@ static const char *METHOD_STRING[] = {
 
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
+#define FIFO_ERROR_FILE_NOT_OPEN -2
+#define FIFO_READ_ERROR_NO_BIPC -3
+#define FIFO_READ_ERROR_UNRECOGNIZED_METHOD -4
+#define FIFO_READ_ERROR_UNRECOGNIZED_RESOURCE -5
+
+#define IPC_INIT_ERROR_MKFIFO_FAILED -1
+#define IPC_INIT_ERROR_FIFO_OPEN_THREAD_FAILED -2
+
+
 typedef struct ipc_class {
   int (*init)(struct ipc_class *self,  char * my_proc_name, char * other_proc_name);
   bool initialized;
-  bool connected;
   int fd_read; // file descriptor to read from the FIFO
   int fd_write;
   char fifo_fname_read[(2*FIFO_NAME_LENGTH)+12];

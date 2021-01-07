@@ -80,8 +80,11 @@ int main(int argc, char *argv[])
   else
     LOG_DEBUG(module_category, "ipc init OK.");
 
-  while (ipc_desc.connected == 0)
+  while (ipc_desc.fd_write < 1)
+  {
     sleep(1);
+    // printf("waiting for write FIFO\n");
+  }
   LOG_DEBUG(module_category, "ipc FIFOs connected.");
 
   uint8_t pbbuffer[MAX_MESSAGE_SIZE] = {0}; //,  * pbbuffer_ptr = pbbuffer;
@@ -105,9 +108,9 @@ int main(int argc, char *argv[])
 
   // rc = ipc_send(&ipc_desc, INVALID_METHOD, INVALID_RESOURCE, 200, pbbuffer_len, pbbuffer);
   rc = ipc_send(&ipc_desc, PUT, STOP_, 0, 0, pbbuffer);
-  if (rc != 0)
+  if (rc < 1)
   {
-    printf("Send_request failed\n");
+    printf("Send_request failed: %d\n", rc);
     exit(-1);
   }
   //clear buffer & wait for message
