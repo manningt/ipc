@@ -1,10 +1,9 @@
-#include "ipc_1.h"
+#include "ipc_1_transport.h"
 #include <stdlib.h>   //for malloc
 #include <string.h>   //for zlog category string operations
 #include <assert.h>   //for zlog category
 #include <stdio.h>    //for printf
 #include <errno.h>
-#include <ctype.h>  // for isdigit
 
 #include <pthread.h>
 #include <signal.h>
