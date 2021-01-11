@@ -1,8 +1,31 @@
 syntax = "proto3";
-import "nanopb.proto";
+// import "nanopb.proto";
 
-message b_status { 
-    bool Active = 1; 
-    bool Status = 2; 
-    string Condition = 4 [(nanopb).max_size = 64]; 
+message b_status_msg { 
+    bool active = 1;
+    bool done = 2; 
+    bool soft_fault = 3; 
+    bool hard_fault = 4;
+}
+
+enum mode_e {
+    MODE_UNKNOWN = 0;
+    DRILL = 1;
+    PLAY = 2;
+    WORKOUT = 3;
+  }
+
+message b_mode_msg { 
+    mode_e mode = 1;
+    int32 drill_workout_id = 2;
+    // string drill_workout_id = 2 [(nanopb).max_size = 64]; 
+    int32 drill_step = 3; 
+    int32 iterations = 4; 
+}
+
+message b_params_msg { 
+    int32 level = 1;  //2-14 (divide by 2 to get 1.0 to 7.0) ?
+    int32 speed = 2;  //range?  Units?
+    int32 elevation = 3;    //range?  Units?
+    int32 frequency = 4;    //range?  Units?
 }

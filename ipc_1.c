@@ -252,6 +252,12 @@ int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, 
     } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
     {
       *resource_e = STOP_;
+    } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
+    {
+      *resource_e = MODE_;
+    } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
+    {
+      *resource_e = PARMS;
     } else
     {
       sprintf(this_ipc->plog_string, "Unrecognized resource: %s", buffer);
@@ -262,7 +268,10 @@ int ipc_recv(ipc_class_t *this_ipc, method_t *method_e, resource_t *resource_e, 
   }
   if (byte_count_rcvd > BIPC_HEADER_LENGTH)
   {
-    *pbbuffer_len = byte_count_rcvd - BIPC_HEADER_LENGTH;
+    // printf("header byte count: %d\n", BIPC_HEADER_LENGTH);
+    // printf("rcvd byte count: %d;  msg byte count: %d\n", byte_count_rcvd, (byte_count_rcvd - BIPC_HEADER_LENGTH));
+    //!! subtracting the #define BIPC_HEADER_LENGTH gave: byte_count_rcvd+4  !Not -15
+    *pbbuffer_len = byte_count_rcvd - 15; //BIPC_HEADER_LENGTH;
     memcpy(pbbuffer, buffer+BIPC_HEADER_LENGTH, *pbbuffer_len);
   }
 

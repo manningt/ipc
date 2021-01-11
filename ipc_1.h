@@ -10,6 +10,26 @@ extern "C" {
 #include <pthread.h>
 #include "mylog.h"
 
+typedef struct b_status {
+  bool active;
+  bool done;
+  uint32_t soft_fault;
+  uint32_t hard_fault;
+  bool ack;
+} b_status_t;
+
+typedef struct b_control {
+  bool start;
+  bool stop;
+} b_control_t;
+
+typedef struct b_mode_settings {
+  uint32_t mode;
+  uint32_t drill_workout_id;
+  uint32_t drill_step;
+  uint32_t iterations;
+} b_mode_settings_t;
+
 #define FIFO_NAME_LENGTH 14
 #define MAX_MESSAGE_SIZE 128
 
@@ -25,7 +45,9 @@ extern "C" {
         RSRC(INVALID_RESOURCE)  \
         RSRC(STATU)  \
         RSRC(START)  \
-        RSRC(STOP_)
+        RSRC(STOP_) \
+        RSRC(MODE_) \
+        RSRC(PARMS) 
 
 typedef enum RESOURCE_ENUM {
     FOREACH_RESOURCE(GENERATE_ENUM)

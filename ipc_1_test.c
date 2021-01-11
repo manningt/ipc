@@ -10,6 +10,11 @@
 #include <pb_decode.h>
 #include "message.pb.h"
 
+// globals for testing - these are shared data structures between the Base code and IPC code
+b_status_t base_status = {0};
+b_control_t base_control = {0};
+b_mode_settings_t base_mode = {0};
+
 // the following macro strips the path, leaving just the filename does not strip the .c suffix
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
@@ -46,22 +51,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  // printf("mine: %s  -- other: %s", my_name_ptr, other_name_ptr);
-
-/*
-  uint8_t pb_buffer[128] = "abcdefghijklmnopqrstuvwxyz";
-  uint8_t header[] = "BIPC GET statu ";
-  uint32_t buff_length;
-
-  printf("Before memcpy: %s\n", pb_buffer);
-  buff_length = strlen( (const char *) pb_buffer);
-  memcpy(pb_buffer+(sizeof(header)-1), pb_buffer, buff_length);
-  pb_buffer[sizeof(header)-1 + buff_length] = 0;
-  memcpy(pb_buffer, header, sizeof(header)-1);
-  printf("After memcpy: %s\n", pb_buffer);
-  exit(0);  
-*/
-
 /*   
   int rc = LOG_INIT(LOG_CONFIG_PATH);
   if (rc) {
@@ -70,6 +59,7 @@ int main(int argc, char *argv[])
   }
   LOG_INIT_CATEGORY(__FILENAME__);
 */
+  char plog_string[96];
   ipc_class_t ipc_desc;
   ipc_desc.initialized = 0;
   if (ipc_init(&ipc_desc, my_name_ptr, other_name_ptr) < 0)
@@ -88,66 +78,163 @@ int main(int argc, char *argv[])
   LOG_DEBUG(module_category, "ipc FIFOs connected.");
 
   uint8_t pbbuffer[MAX_MESSAGE_SIZE] = {0}; //,  * pbbuffer_ptr = pbbuffer;
-  int pbbuffer_len = 0;
- 
-  // make message and encode
-  b_status out_message = b_status_init_zero;
-  // Create a stream that will write to the buffer. 
-  pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
+  int in_pbbuffer_len, out_pbbuffer_len;
 
-  out_message.Active = 0;
-  out_message.Status = 1;
-  sprintf(out_message.Condition, "%s-to-%s", my_name, other_name);
+  method_t in_method_e, out_method_e;
+  resource_t in_resource_e, out_resource_e;
+  int in_response_int, out_response_int;
+            
 
-  if (!pb_encode(&stream, b_status_fields, &out_message))
+  bool do_read_respond = true;
+  // Read message then respond
+  while (do_read_respond)
   {
-      printf("Encoding failed: %s\n", PB_GET_ERROR(&stream));
-      return -1;
-  }
-  pbbuffer_len = stream.bytes_written;
-
-  // rc = ipc_send(&ipc_desc, INVALID_METHOD, INVALID_RESOURCE, 200, pbbuffer_len, pbbuffer);
-  rc = ipc_send(&ipc_desc, PUT, STOP_, 0, 0, pbbuffer);
-  if (rc < 1)
-  {
-    printf("Send_request failed: %d\n", rc);
-    exit(-1);
-  }
-  //clear buffer & wait for message
-  memset(pbbuffer, 0, sizeof(pbbuffer));
-  for (int i = 0; i < 15; i++)
-  {
-    rc = ipc_msg_poll(&ipc_desc);
-    // printf("%d.", i);
-    if (rc)
-      break;
-    sleep(1);
-  }
-  method_t method_e;
-  resource_t resource_e;
-  int response_int = 0;
-  rc = ipc_recv(&ipc_desc, &method_e, &resource_e, &response_int, &pbbuffer_len, pbbuffer);
-  if (rc > 0) 
-  {
-    if (method_e == INVALID_METHOD)
+    if (ipc_msg_poll(&ipc_desc))
     {
-      if (response_int != 0) printf("Received response: %d\n", response_int);
-      else printf("Warning: bad receive: invalid method and response code was zero\n");
-    } else printf("Received Method: %s -- Resource: %s\n", METHOD_STRING[method_e], RESOURCE_STRING[resource_e]);
-
-    // decode message based on Resource, which tells the message type (Status, config)
-    if (pbbuffer_len > 0)
-    {
-      b_status in_message = b_status_init_zero;
-      pb_istream_t stream = pb_istream_from_buffer(pbbuffer, pbbuffer_len);
-      if (!pb_decode(&stream, b_status_fields, &in_message))
+      // memset(pbbuffer, 0, sizeof(pbbuffer));
+      out_pbbuffer_len = 0;
+      out_method_e = INVALID_METHOD;
+      out_resource_e = INVALID_RESOURCE;
+      out_response_int = 200;
+      rc = ipc_recv(&ipc_desc, &in_method_e, &in_resource_e, &in_response_int, &in_pbbuffer_len, pbbuffer);
+      if (rc > 0) 
       {
-          printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
-      } else 
-      { 
-        printf("Message condition: %s\n", in_message.Condition);
+        switch(in_method_e)
+        {
+          case GET:
+          {
+            switch(in_resource_e)
+            {
+              case STATU:
+              {
+                LOG_DEBUG(module_category,"GET STATU - sending status");
+                b_status_msg msg_status = b_status_msg_init_zero;
+                msg_status.active = base_status.active;
+                msg_status.done = base_status.done;
+                msg_status.soft_fault = base_status.soft_fault;
+                msg_status.hard_fault = base_status.hard_fault;
+                pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
+                if (!pb_encode(&stream, b_status_msg_fields, &msg_status))
+                {
+                  sprintf(plog_string, "Encoding failed on STATUS message: %s\n", PB_GET_ERROR(&stream));
+                  LOG_ERROR(module_category, plog_string);
+                  // TODO: handle IPC recieve errors
+                }
+                out_pbbuffer_len = stream.bytes_written;
+                out_response_int = 200;
+              }
+              break;
+              case MODE_:
+              {
+                LOG_DEBUG(module_category,"GET MODE - sending mode");
+                b_mode_msg msg_mode = b_mode_msg_init_zero;
+                msg_mode.mode = base_mode.mode;
+                msg_mode.drill_workout_id = base_mode.drill_workout_id;
+                msg_mode.drill_step = base_mode.drill_step;
+                msg_mode.iterations = base_mode.iterations;
+                pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
+                if (!pb_encode(&stream, b_mode_msg_fields, &msg_mode))
+                {
+                  sprintf(plog_string, "Encoding failed on MODE message: %s\n", PB_GET_ERROR(&stream));
+                  LOG_ERROR(module_category, plog_string);
+                  // TODO: handle IPC recieve errors
+                }
+                out_pbbuffer_len = stream.bytes_written;
+                out_response_int = 200;
+              }
+              break;
+              case PARMS:
+              {
+                LOG_DEBUG(module_category,"GET PARAMETERS - should send parms");
+              }
+              break;
+              default:
+                sprintf(plog_string, "Illegal resource for GET: %s", RESOURCE_STRING[in_resource_e]);
+                LOG_WARNING(module_category, plog_string);
+            }
+          }
+          break;
+          case PUT:
+          {
+            switch(in_resource_e)
+            {
+              case MODE_:
+              {
+                LOG_DEBUG(module_category,"PUT MODE - sending response");
+                if (in_pbbuffer_len > 0)
+                {
+                  // printf("in_pbbuffer_len: %d\n", in_pbbuffer_len);
+                  b_mode_msg in_message = b_mode_msg_init_zero;
+                  pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
+                  if (!pb_decode(&stream, b_mode_msg_fields, &in_message))
+                  {
+                    sprintf(plog_string, "Decode of PUT MODE parameters failed: %s", PB_GET_ERROR(&stream));
+                    LOG_ERROR(module_category, plog_string);
+                    out_response_int = 200;
+                  } else 
+                  { 
+                    // sprintf(plog_string, "PUT MODE: mode: %d  drill_id: %d", in_message.mode, in_message.drill_workout_id);
+                    // LOG_DEBUG(module_category, plog_string);
+                    base_mode.mode = in_message.mode;
+                    base_mode.drill_workout_id = in_message.drill_workout_id;
+                    base_mode.drill_step = in_message.drill_step;
+                    base_mode.iterations = in_message.iterations;
+                  }
+                } else {
+                  LOG_ERROR(module_category,"PUT MODE did not have a message component");
+                }
+              }
+              break;
+              case PARMS:
+              {
+                LOG_DEBUG(module_category,"PUT PARAMETERS - should send response");
+              }
+              break;
+              case START:
+              {
+                LOG_DEBUG(module_category,"PUT START - should send response");
+              }
+              break;
+              case STOP_:
+              {
+                LOG_DEBUG(module_category,"PUT STOP - should send response");
+              }
+              break;
+
+              default:
+                sprintf(plog_string, "Illegal resource for PUT: %s", RESOURCE_STRING[in_resource_e]);
+                LOG_WARNING(module_category, plog_string);
+            }
+          }
+          break;
+          case INVALID_METHOD:
+          {
+            if (in_response_int != 0)
+            //process response
+            {
+              printf("Received response: %d\n", in_response_int);
+            }
+            else
+            {
+              LOG_WARNING(module_category,"Bad receive: invalid method and response code was zero");
+            }
+          }
+          break;
+          default:
+            LOG_FATAL(module_category,"received unrecognized method in message - should not get here.");
+            exit(1);
+        }
+        // send response
+        rc = ipc_send(&ipc_desc, out_method_e, out_resource_e, out_response_int, out_pbbuffer_len, pbbuffer);
+        if (rc < 1)
+        {
+            sprintf(plog_string, "Send Status response failed: ipc_send_code: %d", rc);
+            LOG_ERROR(module_category, plog_string);
+            // TODO: handle IPC send errors
+        }
       }
     }
+    sleep(1);
   }
   LOG_INFO(module_category, "ipc test completed.");
   LOG_FINI();
