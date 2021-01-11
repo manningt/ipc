@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <unistd.h> // needed for sleep
 
-#include "ipc_1.h"
+#include "ipc_1_transport.h"
 #include "mylog.h"
 
 #include <pb_encode.h>
