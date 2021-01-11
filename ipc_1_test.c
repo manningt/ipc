@@ -13,6 +13,8 @@
 #include "ipc_1_msg_handler.h"
 #include "mylog.h"
 
+#define FIFO_NAME_LENGTH 14
+
 // the following macro strips the path, leaving just the filename does not strip the .c suffix
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 

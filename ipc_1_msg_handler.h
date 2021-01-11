@@ -8,6 +8,48 @@ extern "C" {
 #include "interface_base_ui.h"
 #include <pthread.h>
 
+#define MAX_MESSAGE_SIZE 128
+
+#define PROTOCOL_ID "BIPC"
+
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
+
+#define RSRC_STRING_LENGTH 5
+#define RSRC_OFFSET (sizeof(PROTOCOL_ID) + METHOD_STRING_LENGTH + 1)
+
+#define FOREACH_RESOURCE(RSRC) \
+        RSRC(INVALID_RESOURCE)  \
+        RSRC(STATU)  \
+        RSRC(START)  \
+        RSRC(STOP_) \
+        RSRC(MODE_) \
+        RSRC(PARMS) 
+
+typedef enum RESOURCE_ENUM {
+    FOREACH_RESOURCE(GENERATE_ENUM)
+} resource_t;
+
+static const char *RESOURCE_STRING[] = {
+    FOREACH_RESOURCE(GENERATE_STRING)
+};
+
+#define METHOD_STRING_LENGTH 3
+#define FOREACH_METHOD(MTHD) \
+        MTHD(INVALID_METHOD)  \
+        MTHD(GET)  \
+        MTHD(PUT)
+
+typedef enum METHOD_ENUM {
+    FOREACH_METHOD(GENERATE_ENUM)
+} method_t;
+
+static const char *METHOD_STRING[] = {
+    FOREACH_METHOD(GENERATE_STRING)
+};
+
+#define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
+
 typedef struct msg_handler_thread_args {
   char * my_name_ptr;
   char * other_name_ptr;
@@ -17,8 +59,6 @@ typedef struct msg_handler_thread_args {
   b_param_settings_t * params_ptr;
   pthread_t msg_handler_thread;
 } msg_handler_thread_args_t;
-
-#define FIFO_NAME_LENGTH 14
 
 void *messageHandlerThread(void *msg_handler_thread_args_struct);
 
