@@ -69,11 +69,12 @@ void *uiMessageHandlerThread(void *thread_args_struct)
       else if (memcmp(buffer, PROTOCOL_ID, sizeof(PROTOCOL_ID)-1) != 0)
       {
         LOG_ERROR(module_category, "BIPC not in header.");
-        out_response_int = 400;
+        out_response_int = BAD_REQUEST;
         ipc_desc.num_bad_msgs++;
       }
       else if (!memcmp(buffer+sizeof(PROTOCOL_ID), METHOD_STRING[GET], METHOD_STRING_LENGTH))
       {
+        // Process GETs
         if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STATU], RSRC_STRING_LENGTH))
         {
           LOG_DEBUG(module_category,"GET STATU - sending status");
@@ -87,7 +88,7 @@ void *uiMessageHandlerThread(void *thread_args_struct)
           {
             sprintf(plog_string, "Encoding failed on STATUS message: %s\n", PB_GET_ERROR(&stream));
             LOG_ERROR(module_category, plog_string);
-            out_response_int = 400;
+            out_response_int = UNPROCESSABLE_ENTITY;
             // TODO:  handle encode errors
           }
           out_pbbuffer_len = stream.bytes_written;
@@ -105,12 +106,27 @@ void *uiMessageHandlerThread(void *thread_args_struct)
             sprintf(plog_string, "Encoding failed on MODE message: %s\n", PB_GET_ERROR(&stream));
             LOG_ERROR(module_category, plog_string);
             // TODO: handle encode errors
-            out_response_int = 400;
+            out_response_int = UNPROCESSABLE_ENTITY;
           }
           out_pbbuffer_len = stream.bytes_written;
         } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
         {
           LOG_DEBUG(module_category,"GET PARAMETERS - should send parms");
+          b_mode_msg params = b_params_msg_init_zero;
+          params.mode = args->params_ptr->level;
+          params.drill_workout_id = args->params_ptr->speed;
+          params.drill_step = args->params_ptr->elevation;
+          params.iterations = args->params_ptr->frequency;
+          pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
+          if (!pb_encode(&stream, b_params_msg_fields, &params))
+          {
+            sprintf(plog_string, "Encoding failed on PARMS message: %s\n", PB_GET_ERROR(&stream));
+            LOG_ERROR(module_category, plog_string);
+            // TODO: handle encode errors
+            out_response_int = 400;
+          }
+          out_pbbuffer_len = stream.bytes_written;
+
         } else
         {
           sprintf(plog_string, "Unrecognized resource for GET: %s", buffer);
@@ -119,12 +135,13 @@ void *uiMessageHandlerThread(void *thread_args_struct)
         }
       } else if (!memcmp(buffer+sizeof(PROTOCOL_ID), METHOD_STRING[PUT], METHOD_STRING_LENGTH))
       {
-        // Process OUT messages
+        // Process PUT messages
         if (byte_count_rcvd <= BIPC_HEADER_LENGTH)
         {
           sprintf(plog_string, "No message component for: %s", buffer);
           LOG_ERROR(module_category, plog_string);
           ipc_desc.num_bad_msgs++;
+          out_response_int = BAD_REQUEST;
         }
         else
         {
@@ -134,36 +151,70 @@ void *uiMessageHandlerThread(void *thread_args_struct)
 
           if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[START], RSRC_STRING_LENGTH))
           {
-            LOG_DEBUG(module_category,"PUT START - should send response");
+            LOG_DEBUG(module_category,"PUT START - setting the start control bit");
+            if (args->status_ptr->ack == 0)
+              args->control_ptr->start = 0;
+            else
+            {
+              LOG_WARNING(module_category,"PUT START - ACK flag is not zero when recieved start");
+            }
           } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
           {
-            LOG_DEBUG(module_category,"PUT STOP - should send response");
+            LOG_DEBUG(module_category,"PUT STOP - setting the stop control bit");
+            args->control_ptr->stop = 0;
+            // the stop bit will get cleared if the base status 'active' is clear
+
           } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
           {
-            b_mode_msg in_message = b_mode_msg_init_zero;
-            pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
-            if (!pb_decode(&stream, b_mode_msg_fields, &in_message))
+            LOG_DEBUG(module_category,"PUT MODE");
+            if (args->status_ptr->active == 0)
             {
-              sprintf(plog_string, "Decode of PUT MODE parameters failed: %s", PB_GET_ERROR(&stream));
-              LOG_ERROR(module_category, plog_string);
-              // TODO: handle decode errors
-              out_response_int = 400;
-              ipc_desc.num_bad_msgs++;
-            } else 
-            { 
-              args->mode_ptr->mode = in_message.mode;
-              args->mode_ptr->drill_workout_id = in_message.drill_workout_id;
-              args->mode_ptr->drill_step = in_message.drill_step;
-              args->mode_ptr->iterations = in_message.iterations;
+              // can only change the mode config params if boomer is not active
+              b_mode_msg in_message = b_mode_msg_init_zero;
+              pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
+              if (!pb_decode(&stream, b_mode_msg_fields, &in_message))
+              {
+                sprintf(plog_string, "Decode of PUT MODE parameters failed: %s", PB_GET_ERROR(&stream));
+                LOG_ERROR(module_category, plog_string);
+                // TODO: handle decode errors
+                out_response_int = BAD_REQUEST;
+                ipc_desc.num_bad_msgs++;
+              } else 
+              { 
+                args->mode_ptr->mode = in_message.mode;
+                args->mode_ptr->drill_workout_id = in_message.drill_workout_id;
+                args->mode_ptr->drill_step = in_message.drill_step;
+                args->mode_ptr->iterations = in_message.iterations;
+              }
+            } else
+            {
+              LOG_WARNING(module_category,"PUT MODE rejected because boomer_base is Active");
+              out_response_int = LOCKED;
             }
           } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
           {
             LOG_DEBUG(module_category,"PUT PARMS - should send response");
+            b_params_msg in_message = b_params_msg_init_zero;
+            pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
+            if (!pb_decode(&stream, b_params_msg_fields, &in_message))
+            {
+              sprintf(plog_string, "Decode of PUT PARMS parameters failed: %s", PB_GET_ERROR(&stream));
+              LOG_ERROR(module_category, plog_string);
+              // TODO: handle decode errors
+              out_response_int = BAD_REQUEST;
+              ipc_desc.num_bad_msgs++;
+            } else 
+            { 
+              args->params_ptr->level = in_message.level;
+              args->params_ptr->speed = in_message.speed;
+              args->params_ptr->elevation = in_message.elevation;
+              args->params_ptr->frequency = in_message.frequency;
+            }
           } else
           {
             sprintf(plog_string, "Illegal resource for PUT: %s", buffer);
             LOG_WARNING(module_category, plog_string);
-            out_response_int = 400;
+            out_response_int = NOT_FOUND;
             ipc_desc.num_bad_msgs++;
          }
         }
@@ -171,7 +222,7 @@ void *uiMessageHandlerThread(void *thread_args_struct)
       {
         sprintf(plog_string, "Unrecognized method: %s", buffer);
         LOG_WARNING(module_category, plog_string);
-        out_response_int = 400;
+        out_response_int = METHOD_NOT_ALLOWED;
         ipc_desc.num_bad_msgs++;
       }
 
@@ -195,6 +246,12 @@ void *uiMessageHandlerThread(void *thread_args_struct)
           // TODO: handle IPC send errors
       }
     }
+    // clear start/stop requests
+    if (args->status_ptr->ack != 0)
+      args->control_ptr->start = 0;
+    if (args->status_ptr->active == 0)
+      args->control_ptr->stop = 0;
+
     sleep(1);
   }
   // TODO: why is the following return necessary?  The thread has a void return

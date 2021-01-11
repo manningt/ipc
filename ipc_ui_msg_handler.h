@@ -48,6 +48,14 @@ static const char *METHOD_STRING[] = {
     FOREACH_METHOD(GENERATE_STRING)
 };
 
+#define BAD_REQUEST 400  //used if the message decode fails
+#define FORBIDDEN 403
+#define NOT_FOUND 404  // unknown resource
+#define METHOD_NOT_ALLOWED 405
+#define LOCKED 423    // used for PUT mode if the boomer_base is Active
+#define UNPROCESSABLE_ENTITY 422  //used for encode errors - there was not a great error response for this
+
+
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
 typedef struct ui_msg_handler_thread_args {
