@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <unistd.h> // needed for sleep
 
-#include "ipc_1_msg_handler.h"
+#include "ipc_ui_msg_handler.h"
 #include "mylog.h"
 
 #define FIFO_NAME_LENGTH 14

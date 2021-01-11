@@ -10,8 +10,8 @@
 #include <errno.h>
 #include <unistd.h> // needed for sleep
 
-#include "ipc_1_transport.h"
-#include "ipc_1_msg_handler.h"
+#include "ipc_fifo_transport.h"
+#include "ipc_ui_msg_handler.h"
 #include "mylog.h"
 
 #include <pb_encode.h>
