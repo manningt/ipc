@@ -2,35 +2,14 @@
 extern "C" {
 #endif
 
-#ifndef IPC_1_H
-#define IPC_1_H
+#ifndef IPC_1_TRANSPORT_H
+#define IPC_1_TRANSPORT_H
 
 #include <stdbool.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <pthread.h>
-#include "mylog.h"
 
-typedef struct b_status {
-  bool active;
-  bool done;
-  uint32_t soft_fault;
-  uint32_t hard_fault;
-  bool ack;
-} b_status_t;
-
-typedef struct b_control {
-  bool start;
-  bool stop;
-} b_control_t;
-
-typedef struct b_mode_settings {
-  uint32_t mode;
-  uint32_t drill_workout_id;
-  uint32_t drill_step;
-  uint32_t iterations;
-} b_mode_settings_t;
-
-#define FIFO_NAME_LENGTH 14
+#define FIFO_PATH_LENGTH 64
 #define MAX_MESSAGE_SIZE 128
 
 #define PROTOCOL_ID "BIPC"
@@ -87,8 +66,8 @@ typedef struct ipc_class {
   bool initialized;
   int fd_read; // file descriptor to read from the FIFO
   int fd_write;
-  char fifo_fname_read[(2*FIFO_NAME_LENGTH)+12];
-  char fifo_fname_write[(2*FIFO_NAME_LENGTH)+12];
+  char fifo_fname_read[FIFO_PATH_LENGTH];
+  char fifo_fname_write[FIFO_PATH_LENGTH];
   uint32_t num_write_msgs;
   uint32_t num_read_msgs;
   uint32_t num_bad_msgs;
