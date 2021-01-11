@@ -21,9 +21,9 @@
 // the following macro strips the path, leaving just the filename does not strip the .c suffix
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
-void *messageHandlerThread(void *msg_handler_thread_args_struct)
+void *uiMessageHandlerThread(void *thread_args_struct)
 {
-  msg_handler_thread_args_t * args = (msg_handler_thread_args_t *) msg_handler_thread_args_struct;
+  ui_msg_handler_thread_args_t * args = (ui_msg_handler_thread_args_t *) thread_args_struct;
   LOG_DEBUG(module_category, "Message handler thread started");
   
   ipc_class_t ipc_desc;

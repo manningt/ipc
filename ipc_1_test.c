@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
   b_mode_settings_t base_mode = {0};
   b_param_settings_t base_params = {0};
 
-  msg_handler_thread_args_t thread_args;
+  ui_msg_handler_thread_args_t thread_args;
   thread_args.my_name_ptr = my_name_ptr;
   thread_args.other_name_ptr = other_name_ptr;
   thread_args.status_ptr = &base_status;
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
   thread_args.mode_ptr = &base_mode;
   thread_args.params_ptr = &base_params;
   
-  rc = pthread_create(&thread_args.msg_handler_thread, NULL, messageHandlerThread, (void *)&thread_args);
+  rc = pthread_create(&thread_args.msg_handler_thread, NULL, uiMessageHandlerThread, (void *)&thread_args);
   if (rc)
   {
       perror("Unable to create message handler thread: %d\n");

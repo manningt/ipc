@@ -2,8 +2,8 @@
 extern "C" {
 #endif
 
-#ifndef IPC_1_TRANSPORT_H
-#define IPC_1_TRANSPORT_H
+#ifndef IPC_FIFO_TRANSPORT_H
+#define IPC_FIFO_TRANSPORT_H
 
 #include <stdbool.h>
 #include <stdint.h>

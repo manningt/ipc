@@ -2,8 +2,8 @@
 extern "C" {
 #endif
 
-#ifndef IPC_1_MSG_HANDLER_H
-#define IPC_1_MSG_HANDLER_H
+#ifndef IPC_UI_MSG_HANDLER_H
+#define IPC_UI_MSG_HANDLER_H
 
 #include "interface_base_ui.h"
 #include <pthread.h>
@@ -50,7 +50,7 @@ static const char *METHOD_STRING[] = {
 
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
-typedef struct msg_handler_thread_args {
+typedef struct ui_msg_handler_thread_args {
   char * my_name_ptr;
   char * other_name_ptr;
   b_status_t * status_ptr;
@@ -58,9 +58,9 @@ typedef struct msg_handler_thread_args {
   b_mode_settings_t * mode_ptr;
   b_param_settings_t * params_ptr;
   pthread_t msg_handler_thread;
-} msg_handler_thread_args_t;
+} ui_msg_handler_thread_args_t;
 
-void *messageHandlerThread(void *msg_handler_thread_args_struct);
+void *uiMessageHandlerThread(void *msg_handler_thread_args_struct);
 
 #endif
 
