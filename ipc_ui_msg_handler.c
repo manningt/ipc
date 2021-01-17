@@ -111,12 +111,12 @@ void *uiMessageHandlerThread(void *thread_args_struct)
           out_pbbuffer_len = stream.bytes_written;
         } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
         {
-          LOG_DEBUG(module_category,"GET PARAMETERS - should send parms");
-          b_mode_msg params = b_params_msg_init_zero;
-          params.mode = args->params_ptr->level;
-          params.drill_workout_id = args->params_ptr->speed;
-          params.drill_step = args->params_ptr->elevation;
-          params.iterations = args->params_ptr->frequency;
+          LOG_DEBUG(module_category,"GET PARMS");
+          b_params_msg params = b_params_msg_init_zero;
+          params.level = args->params_ptr->level;
+          params.speed = args->params_ptr->speed;
+          params.elevation = args->params_ptr->elevation;
+          params.frequency = args->params_ptr->frequency;
           pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
           if (!pb_encode(&stream, b_params_msg_fields, &params))
           {
@@ -193,7 +193,7 @@ void *uiMessageHandlerThread(void *thread_args_struct)
             }
           } else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
           {
-            LOG_DEBUG(module_category,"PUT PARMS - should send response");
+            LOG_DEBUG(module_category,"PUT PARMS");
             b_params_msg in_message = b_params_msg_init_zero;
             pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
             if (!pb_decode(&stream, b_params_msg_fields, &in_message))
