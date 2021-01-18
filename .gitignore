@@ -3,4 +3,4 @@
 *.pb*
 Makefile
 ipc_1_test
-ipc_1_test-old.txt
+.editorconfig

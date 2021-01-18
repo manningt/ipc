@@ -75,7 +75,7 @@ int ipc_init(ipc_class_t *this_ipc, char * my_proc_name , char * other_proc_name
 
   if (this_ipc->initialized == 0)
   {
-    sprintf(this_ipc->fifo_fname_write, "/tmp/%sTo%s.fifo", my_proc_name, other_proc_name);
+    sprintf(this_ipc->fifo_fname_write, "%s/%sTo%s.fifo", FIFO_PATH_PREFIX, my_proc_name, other_proc_name);
     if (mkfifo( (char *) this_ipc->fifo_fname_write, 0666) != 0)
     {
       if (errno != EEXIST)
@@ -85,7 +85,7 @@ int ipc_init(ipc_class_t *this_ipc, char * my_proc_name , char * other_proc_name
       }
     }
 
-    sprintf(this_ipc->fifo_fname_read, "/tmp/%sTo%s.fifo", other_proc_name, my_proc_name);
+    sprintf(this_ipc->fifo_fname_read, "%s/%sTo%s.fifo", FIFO_PATH_PREFIX, other_proc_name, my_proc_name);
     if (mkfifo( (char *) this_ipc->fifo_fname_read, 0666) != 0)
     {
       if (errno != EEXIST) {

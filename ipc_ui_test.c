@@ -24,7 +24,6 @@ int main(int argc, char *argv[])
   char other_name[FIFO_NAME_LENGTH] = "Ui";
   char *my_name_ptr = my_name;
   char *other_name_ptr = other_name;
-  int rc;
 
   int opt;
   while ((opt = getopt(argc, argv, "rm:o:")) != -1)
@@ -51,29 +50,24 @@ int main(int argc, char *argv[])
     }
   }
 
-  // globals for testing - these are shared data structures between the Base code and IPC code
-  b_status_t base_status = {0};
-  b_control_t base_control = {0};
-  b_mode_settings_t base_mode = {0};
-  b_param_settings_t base_params = {0};
+  // globals:
+  b_status_t base_status = {0};  //written by the base; read by the UI
+  // b_control_t base_control = {0}; 
+  b_mode_settings_t base_mode = {0};  //read by the base; write/read by the UI
+  b_param_settings_t base_params = {0}; //read by the base; write/read by the UI
 
-  ui_msg_handler_thread_args_t thread_args;
-  thread_args.my_name_ptr = my_name_ptr;
-  thread_args.other_name_ptr = other_name_ptr;
-  thread_args.status_ptr = &base_status;
-  thread_args.control_ptr = &base_control;
-  thread_args.mode_ptr = &base_mode;
-  thread_args.params_ptr = &base_params;
-  
-  rc = pthread_create(&thread_args.msg_handler_thread, NULL, uiMessageHandlerThread, (void *)&thread_args);
-  if (rc)
+  ui_2_desc_t ui_2_desc = {0};
+  ui_2_desc.status_ptr = &base_status;
+  ui_2_desc.mode_ptr = &base_mode;
+  ui_2_desc.params_ptr = &base_params;
+
+  ui_2_init(&ui_2_desc);
+
+  while(1)
   {
-      perror("Unable to create message handler thread: %d\n");
-      exit(1);
+    ui_2_update(&ui_2_desc);
+    sleep(1);
   }
-
-  puts("Press any key to TERMINATE ... ");
-  getchar();
 
   LOG_INFO(module_category, "ipc test completed.");
   LOG_FINI();

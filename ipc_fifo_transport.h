@@ -2,13 +2,13 @@
 extern "C" {
 #endif
 
-#ifndef IPC_FIFO_TRANSPORT_H
-#define IPC_FIFO_TRANSPORT_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <pthread.h>
 
+#define FIFO_NAME_LENGTH 14
 #define FIFO_PATH_LENGTH 64
 
 #define FIFO_ERROR_FILE_NOT_OPEN -2
@@ -18,6 +18,12 @@ extern "C" {
 
 #define IPC_INIT_ERROR_MKFIFO_FAILED -1
 #define IPC_INIT_ERROR_FIFO_OPEN_THREAD_FAILED -2
+
+#ifdef linux
+#define FIFO_PATH_PREFIX "/dev/shm"
+#else
+#define FIFO_PATH_PREFIX "/tmp"
+#endif
 
 
 typedef struct ipc_class {
@@ -38,8 +44,6 @@ typedef struct ipc_class {
 
 int ipc_init(ipc_class_t *ipc_id, char * from, char * to);
 int ipc_msg_poll(ipc_class_t *ipc_id);
-
-#endif
 
 #ifdef __cplusplus
 }

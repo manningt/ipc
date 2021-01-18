@@ -2,8 +2,7 @@
 extern "C" {
 #endif
 
-#ifndef INTERFACE_BASE_UI_H
-#define IINTERFACE_BASE_UI_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,8 +33,6 @@ typedef struct b_param_settings {
   uint32_t elevation;
   uint32_t frequency;
 } b_param_settings_t;
-
-#endif
 
 #ifdef __cplusplus
 }

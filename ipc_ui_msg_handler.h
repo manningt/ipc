@@ -2,10 +2,10 @@
 extern "C" {
 #endif
 
-#ifndef IPC_UI_MSG_HANDLER_H
-#define IPC_UI_MSG_HANDLER_H
+#pragma once
 
 #include "interface_base_ui.h"
+#include "ipc_fifo_transport.h"
 #include <pthread.h>
 
 #define MAX_MESSAGE_SIZE 128
@@ -55,22 +55,22 @@ static const char *METHOD_STRING[] = {
 #define LOCKED 423    // used for PUT mode if the boomer_base is Active
 #define UNPROCESSABLE_ENTITY 422  //used for encode errors - there was not a great error response for this
 
-
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
-typedef struct ui_msg_handler_thread_args {
-  char * my_name_ptr;
-  char * other_name_ptr;
-  b_status_t * status_ptr;
-  b_control_t * control_ptr;
-  b_mode_settings_t * mode_ptr;
-  b_param_settings_t * params_ptr;
-  pthread_t msg_handler_thread;
-} ui_msg_handler_thread_args_t;
 
-void *uiMessageHandlerThread(void *msg_handler_thread_args_struct);
+typedef struct ui_2_desc {
+    int (*init)(struct ui_2_desc *self);
+    bool initialized;
+    ipc_class_t * ipc_desc;
+    b_status_t * status_ptr;
+    b_mode_settings_t * mode_ptr;
+    b_param_settings_t * params_ptr;
+} ui_2_desc_t;
 
-#endif
+void ui_2_init( ui_2_desc_t *ui_2_id);
+
+void ui_2_update(ui_2_desc_t *ui_2_id);
+
 
 #ifdef __cplusplus
 }
