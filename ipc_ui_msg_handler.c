@@ -12,7 +12,7 @@
 
 #include "ipc_fifo_transport.h"
 #include "ipc_ui_msg_handler.h"
-#include "mylog.h"
+#include "boomer_log.h"
 
 #include <pb_encode.h>
 #include <pb_decode.h>

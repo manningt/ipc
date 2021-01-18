@@ -4,3 +4,4 @@
 Makefile
 ipc_1_test
 .editorconfig
+boomer_log.h

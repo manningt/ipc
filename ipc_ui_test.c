@@ -11,7 +11,7 @@
 #include <unistd.h> // needed for sleep
 
 #include "ipc_ui_msg_handler.h"
-#include "mylog.h"
+#include "boomer_log.h"
 
 #define FIFO_NAME_LENGTH 14
 

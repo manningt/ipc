@@ -12,7 +12,7 @@
 #include <unistd.h> // for close
 #include <poll.h>
 
-#include "mylog.h"
+#include "boomer_log.h"
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
