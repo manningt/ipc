@@ -18,33 +18,33 @@ extern "C" {
 #define RSRC_OFFSET (sizeof(PROTOCOL_ID) + METHOD_STRING_LENGTH + 1)
 
 #define FOREACH_RESOURCE(RSRC) \
-        RSRC(INVALID_RESOURCE)  \
-        RSRC(STATU)  \
-        RSRC(START)  \
-        RSRC(STOP_) \
-        RSRC(MODE_) \
-        RSRC(PARMS) 
+			RSRC(INVALID_RESOURCE)  \
+			RSRC(STATU)  \
+			RSRC(START)  \
+			RSRC(STOP_) \
+			RSRC(MODE_) \
+			RSRC(PARMS) 
 
 typedef enum RESOURCE_ENUM {
-    FOREACH_RESOURCE(GENERATE_ENUM)
+	FOREACH_RESOURCE(GENERATE_ENUM)
 } resource_t;
 
 static const char *RESOURCE_STRING[] = {
-    FOREACH_RESOURCE(GENERATE_STRING)
+		FOREACH_RESOURCE(GENERATE_STRING)
 };
 
 #define METHOD_STRING_LENGTH 3
 #define FOREACH_METHOD(MTHD) \
-        MTHD(INVALID_METHOD)  \
-        MTHD(GET)  \
-        MTHD(PUT)
+			MTHD(INVALID_METHOD)  \
+			MTHD(GET)  \
+			MTHD(PUT)
 
 typedef enum METHOD_ENUM {
-    FOREACH_METHOD(GENERATE_ENUM)
+	FOREACH_METHOD(GENERATE_ENUM)
 } method_t;
 
 static const char *METHOD_STRING[] = {
-    FOREACH_METHOD(GENERATE_STRING)
+	FOREACH_METHOD(GENERATE_STRING)
 };
 
 #define BAD_REQUEST 400  //used if the message decode fails
@@ -56,20 +56,20 @@ static const char *METHOD_STRING[] = {
 
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
+#define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
+
 typedef struct b_mode_settings {
-  uint32_t mode;
-  uint32_t drill_workout_id;
-  uint32_t drill_step;
+	uint32_t mode;
+	uint32_t drill_workout_id;
+	uint32_t drill_step;
 } b_mode_settings_t;
 
 typedef struct ipc_control_desc {
-    int (*init)(struct ipc_control_desc *self);
-    bool initialized;
-    ipc_transport_class_t * ipc_desc;
-    b_mode_settings_t mode_settings;
+	int (*init)(struct ipc_control_desc *self);
+	bool initialized;
+	ipc_transport_class_t * ipc_desc;
+	b_mode_settings_t mode_settings;
 } ipc_control_desc_t;
-
-#define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
 
 void ipc_control_init( ipc_control_desc_t *descriptor);
 

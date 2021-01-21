@@ -27,18 +27,18 @@ extern "C" {
 
 
 typedef struct ipc_transport_class {
-  int (*init)(struct ipc_transport_class *self,  char * my_proc_name, char * other_proc_name);
-  bool initialized;
-  int fd_read; // file descriptor to read from the FIFO
-  int fd_write;
-  char fifo_fname_read[FIFO_PATH_LENGTH];
-  char fifo_fname_write[FIFO_PATH_LENGTH];
-  uint32_t num_write_msgs;
-  uint32_t num_read_msgs;
-  uint32_t num_bad_msgs;
+	int (*init)(struct ipc_transport_class *self,  char * my_proc_name, char * other_proc_name);
+	bool initialized;
+	int fd_read; // file descriptor to read from the FIFO
+	int fd_write;
+	char fifo_fname_read[FIFO_PATH_LENGTH];
+	char fifo_fname_write[FIFO_PATH_LENGTH];
+	uint32_t num_write_msgs;
+	uint32_t num_read_msgs;
+	uint32_t num_bad_msgs;
 
-  pthread_t open_fifo_thread;
-  char plog_string[80];
+	pthread_t open_fifo_thread;
+	char plog_string[80];
 } ipc_transport_class_t;
 
 int ipc_init(ipc_transport_class_t *ipc_id, char * from, char * to);

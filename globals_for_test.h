@@ -19,29 +19,28 @@ uint8_t game_state = IDLE_GS;
 enum {IDLE_DS, NON_IDLE_DS};
 uint8_t drill_state = IDLE_DS;
 
-
 uint32_t soft_fault = 0;
 uint32_t hard_fault = 0;
 
 void start_game()
 {
-  game_state = NON_IDLE_GS;
-  printf("Starting Game\n");
+	game_state = NON_IDLE_GS;
+	printf("Starting Game\n");
 }
 void end_game()
 {
-  game_state = IDLE_GS;
-  printf("Stopping Game\n");
+	game_state = IDLE_GS;
+	printf("Stopping Game\n");
 }
 void start_drill()
 {
-  drill_state = NON_IDLE_DS;
-  printf("Starting Drill\n");
+	drill_state = NON_IDLE_DS;
+	printf("Starting Drill\n");
 }
 void end_drill()
 {
-  drill_state = IDLE_DS;
-  printf("Stopping Drill\n");
+	drill_state = IDLE_DS;
+	printf("Stopping Drill\n");
 }
 
 #ifdef __cplusplus
