@@ -11,12 +11,9 @@
 #include <unistd.h> // needed for sleep
 
 #include "ipc_ui_msg_handler.h"
-#include "boomer_log.h"
+#include "logging.h"
 
 #define FIFO_NAME_LENGTH 14
-
-// the following macro strips the path, leaving just the filename does not strip the .c suffix
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
 int main(int argc, char *argv[])
 {
@@ -50,9 +47,10 @@ int main(int argc, char *argv[])
     }
   }
 
+  LOG_DEBUG( "ipc test start.");
+ 
   // globals:
   b_status_t base_status = {0};  //written by the base; read by the UI
-  // b_control_t base_control = {0}; 
   b_mode_settings_t base_mode = {0};  //read by the base; write/read by the UI
   b_param_settings_t base_params = {0}; //read by the base; write/read by the UI
 
@@ -69,8 +67,5 @@ int main(int argc, char *argv[])
     sleep(1);
   }
 
-  LOG_INFO(module_category, "ipc test completed.");
-  LOG_FINI();
-
-  exit(0);
+  LOG_DEBUG( "ipc test completed.");
 }

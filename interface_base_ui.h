@@ -15,11 +15,6 @@ typedef struct b_status {
   bool ack;
 } b_status_t;
 
-typedef struct b_control {
-  bool start;
-  bool stop;
-} b_control_t;
-
 typedef struct b_mode_settings {
   uint32_t mode;
   uint32_t drill_workout_id;

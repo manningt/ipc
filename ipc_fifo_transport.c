@@ -12,28 +12,11 @@
 #include <unistd.h> // for close
 #include <poll.h>
 
-#include "boomer_log.h"
-
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-
-/*
-static zlog_category_t* category() {
-  static zlog_category_t *module_category = NULL;
-  if (module_category== NULL) {
-    char *module_category_name = (char*)malloc(strlen(__FILENAME__) * sizeof(char));
-    strcpy(module_category_name, __FILENAME__);
-     //terminate string at . to get rid of the .c extension
-    *(module_category_name+(strlen(__FILENAME__)-2)) = '\0';
-    module_category = LOG_GET_CATEGORY(module_category_name); assert(module_category);
-    free(module_category_name);
-  }
-  return module_category;
-}
-*/
+#include "logging.h"
 
 void *openFifosThread(void *this_ipc) {
   ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
-  LOG_DEBUG(module_category, "Fifo open thread started");
+  LOG_DEBUG( "Fifo open thread started");
   while (true)
   {
     if (my_ipc->fd_read < 1)
@@ -47,7 +30,7 @@ void *openFifosThread(void *this_ipc) {
       else
       {
         sprintf(my_ipc->plog_string, "Opened %s for reading.", my_ipc->fifo_fname_read);
-        LOG_DEBUG(module_category, my_ipc->plog_string);
+        LOG_DEBUG( my_ipc->plog_string);
       }
     }
     if (my_ipc->fd_write < 1)
@@ -62,7 +45,7 @@ void *openFifosThread(void *this_ipc) {
       } else
       {
         sprintf(my_ipc->plog_string, "Opened %s for writing.", my_ipc->fifo_fname_write);
-        LOG_DEBUG(module_category, my_ipc->plog_string);
+        LOG_DEBUG( my_ipc->plog_string);
       }
     }
     sleep(1);
@@ -95,7 +78,7 @@ int ipc_init(ipc_class_t *this_ipc, char * my_proc_name , char * other_proc_name
     }
     sprintf(this_ipc->plog_string, "Created FIFOs: %s & %s", this_ipc->fifo_fname_write, \
         this_ipc->fifo_fname_read);
-    LOG_DEBUG(module_category, this_ipc->plog_string);
+    LOG_DEBUG( this_ipc->plog_string);
 
     this_ipc->num_read_msgs = 0;
     this_ipc->num_write_msgs = 0;
