@@ -18,9 +18,9 @@
 #include <pb_decode.h>
 #include "message.pb.h"
 
-// #ifdef IPC_CONTROL_TEST
+#ifndef LINUX
 #include "globals_for_test.h"
-// #endif
+#endif
 
 ipc_transport_class_t ipc_desc = {0};
 char * my_name = "Base";
