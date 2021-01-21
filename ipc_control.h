@@ -60,23 +60,16 @@ typedef struct b_mode_settings {
   uint32_t mode;
   uint32_t drill_workout_id;
   uint32_t drill_step;
-  uint32_t iterations;
 } b_mode_settings_t;
-
-typedef struct b_param_settings {
-  uint32_t level;
-  uint32_t speed;
-  uint32_t elevation;
-  uint32_t frequency;
-} b_param_settings_t;
 
 typedef struct ipc_control_desc {
     int (*init)(struct ipc_control_desc *self);
     bool initialized;
     ipc_transport_class_t * ipc_desc;
     b_mode_settings_t mode_settings;
-    b_param_settings_t param_settings;
 } ipc_control_desc_t;
+
+#define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
 
 void ipc_control_init( ipc_control_desc_t *descriptor);
 

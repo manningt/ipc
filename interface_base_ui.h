@@ -25,8 +25,8 @@ typedef struct b_mode_settings {
 typedef struct b_param_settings {
   uint32_t level;
   uint32_t speed;
-  uint32_t elevation;
-  uint32_t frequency;
+  uint32_t height;
+  uint32_t delay;
 } b_param_settings_t;
 
 #ifdef __cplusplus

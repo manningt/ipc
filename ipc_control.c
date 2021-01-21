@@ -83,7 +83,8 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			{
 				LOG_DEBUG("GET STATU - sending status");
 				b_status_msg msg_status = b_status_msg_init_zero;
-				//TODO: add getting active
+				printf("Game State: %d  --  Drill State: %d\n", game_state, drill_state);
+				msg_status.active = BASE_ACTIVE;
 				msg_status.soft_fault = soft_fault;
 				msg_status.hard_fault = hard_fault;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
@@ -95,7 +96,8 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 					// TODO:  handle encode errors
 				}
 				out_pbbuffer_len = stream.bytes_written;
-			} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
+			}
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("GET MODE");
 				b_mode_msg msg_mode = b_mode_msg_init_zero;
@@ -112,14 +114,22 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 					out_response_int = UNPROCESSABLE_ENTITY;
 				}
 				out_pbbuffer_len = stream.bytes_written;
-			} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
+			}
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("GET PARMS");
 				b_params_msg params = b_params_msg_init_zero;
-				params.level = this_cntrl->param_settings.level;
-				params.speed = this_cntrl->param_settings.speed;
-				params.elevation = this_cntrl->param_settings.elevation;
-				params.frequency = this_cntrl->param_settings.frequency;
+				if (this_cntrl->mode_settings.mode == mode_e_GAME)
+				{
+					params.level = boomer_level;
+				}
+				else
+				{
+					params.level = level_mod;
+				}
+				params.speed = speed_mod;
+				params.height = height_mod;
+				params.delay = frequency_mod;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 				if (!pb_encode(&stream, b_params_msg_fields, &params))
 				{
@@ -129,7 +139,8 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 					out_response_int = 400;
 				}
 				out_pbbuffer_len = stream.bytes_written;
-			} else
+			}
+			else
 			{
 				sprintf(plog_string, "Unrecognized resource for GET: %s", buffer);
 				LOG_ERROR( plog_string);
@@ -138,60 +149,79 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 		} else if (!memcmp(buffer+sizeof(PROTOCOL_ID), METHOD_STRING[PUT], METHOD_STRING_LENGTH))
 		{
 			// Process PUT messages
-			if (byte_count_rcvd <= BIPC_HEADER_LENGTH)
-			{
-				sprintf(plog_string, "No message component for: %s", buffer);
-				LOG_ERROR( plog_string);
-				ipc_desc.num_bad_msgs++;
-				out_response_int = BAD_REQUEST;
-			}
-			else
+			if (byte_count_rcvd > BIPC_HEADER_LENGTH)
 			{
 				//copy out message portion for decoding
 				in_pbbuffer_len = byte_count_rcvd - 15; // why does the define not work?? BIPC_HEADER_LENGTH;
 				memcpy(pbbuffer, buffer+BIPC_HEADER_LENGTH, in_pbbuffer_len);
+			}
+			else in_pbbuffer_len = 0;
 
-				if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[START], RSRC_STRING_LENGTH))
-				{
-					LOG_DEBUG("PUT START - setting the start control bit");
-					//!! TODO: call drive or game start
-				} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
-				{
-					LOG_DEBUG("PUT STOP - setting the stop control bit");
-					//!! TODO: call drive or game end
+			if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[START], RSRC_STRING_LENGTH))
+			{
+				LOG_DEBUG("PUT START");
+				if (this_cntrl->mode_settings.mode == mode_e_GAME) start_game();
+				else if (this_cntrl->mode_settings.mode == mode_e_DRILL) start_drill();
+				else LOG_ERROR("Invalid mode on start: %d", this_cntrl->mode_settings.mode);
+			}
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
+			{
+				LOG_DEBUG("PUT STOP");
+				if (game_state != IDLE_GS) end_game();
+				else if (drill_state != IDLE_DS) end_drill();
 
-				} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
+			}
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
+			{
+				LOG_DEBUG("PUT MODE");
+				if (BASE_ACTIVE == 0)
 				{
-					LOG_DEBUG("PUT MODE");
-					uint32_t active = 0;
-					//TODO: qet state from state machines
-					if (active == 0)
-					{
 					// can only change the mode config params if boomer is not active
-					b_mode_msg in_message = b_mode_msg_init_zero;
-					pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
-					if (!pb_decode(&stream, b_mode_msg_fields, &in_message))
+					if (in_pbbuffer_len < 1)
 					{
-						sprintf(plog_string, "Decode of PUT MODE parameters failed: %s", PB_GET_ERROR(&stream));
+						sprintf(plog_string, "No message component for: %s", buffer);
 						LOG_ERROR( plog_string);
-						// TODO: handle decode errors
-						out_response_int = BAD_REQUEST;
 						ipc_desc.num_bad_msgs++;
-					} else 
-					{ 
-						this_cntrl->mode_settings.mode = in_message.mode;
-						this_cntrl->mode_settings.drill_workout_id = in_message.drill_workout_id;
-						this_cntrl->mode_settings.drill_step = in_message.drill_step;
-						// this_cntrl->mode_settings.iterations = in_message.iterations;
+						out_response_int = BAD_REQUEST;
 					}
-					} else
+					else
 					{
-						LOG_WARNING("PUT MODE rejected because boomer_base is Active\n");
-						out_response_int = LOCKED;
+						b_mode_msg in_message = b_mode_msg_init_zero;
+						pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
+						if (!pb_decode(&stream, b_mode_msg_fields, &in_message))
+						{
+							sprintf(plog_string, "Decode of PUT MODE parameters failed: %s", PB_GET_ERROR(&stream));
+							LOG_ERROR( plog_string);
+							// TODO: handle decode errors
+							out_response_int = BAD_REQUEST;
+							ipc_desc.num_bad_msgs++;
+						} else 
+						{ 
+							this_cntrl->mode_settings.mode = in_message.mode;
+							this_cntrl->mode_settings.drill_workout_id = in_message.drill_workout_id;
+							this_cntrl->mode_settings.drill_step = in_message.drill_step;
+							// this_cntrl->mode_settings.iterations = in_message.iterations;
+						}
 					}
-				} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
+				}
+				else
 				{
-					LOG_DEBUG("PUT PARMS");
+					LOG_WARNING("PUT MODE rejected because boomer_base is Active\n");
+					out_response_int = LOCKED;
+				}
+			}
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
+			{
+				LOG_DEBUG("PUT PARMS");
+				if (in_pbbuffer_len < 1)
+				{
+					sprintf(plog_string, "No message component for: %s", buffer);
+					LOG_ERROR( plog_string);
+					ipc_desc.num_bad_msgs++;
+					out_response_int = BAD_REQUEST;
+				}
+				else
+				{
 					b_params_msg in_message = b_params_msg_init_zero;
 					pb_istream_t stream = pb_istream_from_buffer(pbbuffer, in_pbbuffer_len);
 					if (!pb_decode(&stream, b_params_msg_fields, &in_message))
@@ -201,24 +231,32 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 						// TODO: handle decode errors
 						out_response_int = BAD_REQUEST;
 						ipc_desc.num_bad_msgs++;
-					} else 
-					{
-						this_cntrl->param_settings.level = in_message.level;
-						boomer_level = (uint8_t)in_message.level;
-						// level_mod = (uint8_t)in_message.level;
-						this_cntrl->param_settings.speed = in_message.speed;
-						this_cntrl->param_settings.elevation = in_message.elevation;
-						this_cntrl->param_settings.frequency = in_message.frequency;
 					}
-				} else
-				{
-					sprintf(plog_string, "Illegal resource for PUT: %s", buffer);
-					LOG_WARNING( plog_string);
-					out_response_int = NOT_FOUND;
-					ipc_desc.num_bad_msgs++;
+					else 
+					{
+						if (this_cntrl->mode_settings.mode == mode_e_GAME)
+						{
+							boomer_level = (uint8_t) in_message.level;
+						}
+						else
+						{
+							level_mod = (int8_t) in_message.level;
+						}
+						speed_mod = (uint8_t) in_message.speed;
+						height_mod = (int8_t) in_message.height;
+						frequency_mod = (uint16_t) in_message.delay;
+					}
 				}
 			}
-		} else
+			else
+			{
+				sprintf(plog_string, "Illegal resource for PUT: %s", buffer);
+				LOG_WARNING( plog_string);
+				out_response_int = NOT_FOUND;
+				ipc_desc.num_bad_msgs++;
+			}
+		}
+		else
 		{
 			sprintf(plog_string, "Unrecognized method: %s", buffer);
 			LOG_WARNING( plog_string);
