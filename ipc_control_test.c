@@ -1,8 +1,7 @@
 /*
   IPC test:
-    -- creates the msg_handler thread, which creates the FIFO open thread
-    -- TODO: create a boomer_base emulator that react to changes in the control structure
-             and updates the status structure accordingly it will create a 
+    -- provides the globals for the control IPC to read/write
+    -- instantiates the ipc_control message handler 
 */
 
 #include <stdio.h>
@@ -10,10 +9,12 @@
 #include <errno.h>
 #include <unistd.h> // needed for sleep
 
-#include "ipc_ui_msg_handler.h"
+#include "ipc_control.h"
 #include "logging.h"
 
 #define FIFO_NAME_LENGTH 14
+
+#define IPC_CONTROL_TEST
 
 int main(int argc, char *argv[])
 {
@@ -49,21 +50,12 @@ int main(int argc, char *argv[])
 
   LOG_DEBUG( "ipc test start.");
  
-  // globals:
-  b_status_t base_status = {0};  //written by the base; read by the UI
-  b_mode_settings_t base_mode = {0};  //read by the base; write/read by the UI
-  b_param_settings_t base_params = {0}; //read by the base; write/read by the UI
-
-  ui_2_desc_t ui_2_desc = {0};
-  ui_2_desc.status_ptr = &base_status;
-  ui_2_desc.mode_ptr = &base_mode;
-  ui_2_desc.params_ptr = &base_params;
-
-  ui_2_init(&ui_2_desc);
+  ipc_control_desc_t ipc_control_desc = {0};
+  ipc_control_init(&ipc_control_desc);
 
   while(1)
   {
-    ui_2_update(&ui_2_desc);
+    ipc_control_update(&ipc_control_desc);
     sleep(1);
   }
 

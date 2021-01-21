@@ -15,7 +15,7 @@
 #include "logging.h"
 
 void *openFifosThread(void *this_ipc) {
-  ipc_class_t * my_ipc = (ipc_class_t *) this_ipc;
+  ipc_transport_class_t * my_ipc = (ipc_transport_class_t *) this_ipc;
   LOG_DEBUG( "Fifo open thread started");
   while (true)
   {
@@ -53,7 +53,7 @@ void *openFifosThread(void *this_ipc) {
 }
 
 
-int ipc_init(ipc_class_t *this_ipc, char * my_proc_name , char * other_proc_name) {
+int ipc_init(ipc_transport_class_t *this_ipc, char * my_proc_name , char * other_proc_name) {
   int rc;
 
   if (this_ipc->initialized == 0)
@@ -97,7 +97,7 @@ int ipc_init(ipc_class_t *this_ipc, char * my_proc_name , char * other_proc_name
 }
 
 
-int ipc_msg_poll(ipc_class_t *this_ipc) {
+int ipc_msg_poll(ipc_transport_class_t *this_ipc) {
   int rc = 0;
   if (this_ipc->fd_read > 0)
   {
@@ -116,13 +116,13 @@ int ipc_msg_poll(ipc_class_t *this_ipc) {
 
 /*
 // plain text send/receive
-int ipc_msg_send(ipc_class_t *this_ipc, char * message) {
+int ipc_msg_send(ipc_transport_class_t *this_ipc, char * message) {
   int rc;
   rc = write(this_ipc->fd_write, message, strlen(message)+1);
   return rc;
 }
 
-int ipc_msg_recv(ipc_class_t *this_ipc, char * message, int message_size) {
+int ipc_msg_recv(ipc_transport_class_t *this_ipc, char * message, int message_size) {
   int rc;
   rc = read(this_ipc->fd_read, message, message_size);
   return rc;

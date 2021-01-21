@@ -26,8 +26,8 @@ extern "C" {
 #endif
 
 
-typedef struct ipc_class {
-  int (*init)(struct ipc_class *self,  char * my_proc_name, char * other_proc_name);
+typedef struct ipc_transport_class {
+  int (*init)(struct ipc_transport_class *self,  char * my_proc_name, char * other_proc_name);
   bool initialized;
   int fd_read; // file descriptor to read from the FIFO
   int fd_write;
@@ -38,12 +38,11 @@ typedef struct ipc_class {
   uint32_t num_bad_msgs;
 
   pthread_t open_fifo_thread;
-  // zlog_category_t *module_category;
   char plog_string[80];
-} ipc_class_t;
+} ipc_transport_class_t;
 
-int ipc_init(ipc_class_t *ipc_id, char * from, char * to);
-int ipc_msg_poll(ipc_class_t *ipc_id);
+int ipc_init(ipc_transport_class_t *ipc_id, char * from, char * to);
+int ipc_msg_poll(ipc_transport_class_t *ipc_id);
 
 #ifdef __cplusplus
 }

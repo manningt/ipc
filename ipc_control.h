@@ -4,7 +4,6 @@ extern "C" {
 
 #pragma once
 
-#include "interface_base_ui.h"
 #include "ipc_fifo_transport.h"
 #include <pthread.h>
 
@@ -57,19 +56,31 @@ static const char *METHOD_STRING[] = {
 
 #define BIPC_HEADER_LENGTH 5 + METHOD_STRING_LENGTH + 1 + RSRC_STRING_LENGTH + 1 //"BIPC PUT START "
 
+typedef struct b_mode_settings {
+  uint32_t mode;
+  uint32_t drill_workout_id;
+  uint32_t drill_step;
+  uint32_t iterations;
+} b_mode_settings_t;
 
-typedef struct ui_2_desc {
-    int (*init)(struct ui_2_desc *self);
+typedef struct b_param_settings {
+  uint32_t level;
+  uint32_t speed;
+  uint32_t elevation;
+  uint32_t frequency;
+} b_param_settings_t;
+
+typedef struct ipc_control_desc {
+    int (*init)(struct ipc_control_desc *self);
     bool initialized;
-    ipc_class_t * ipc_desc;
-    b_status_t * status_ptr;
-    b_mode_settings_t * mode_ptr;
-    b_param_settings_t * params_ptr;
-} ui_2_desc_t;
+    ipc_transport_class_t * ipc_desc;
+    b_mode_settings_t mode_settings;
+    b_param_settings_t param_settings;
+} ipc_control_desc_t;
 
-void ui_2_init( ui_2_desc_t *ui_2_id);
+void ipc_control_init( ipc_control_desc_t *descriptor);
 
-void ui_2_update(ui_2_desc_t *ui_2_id);
+void ipc_control_update(ipc_control_desc_t *descriptor);
 
 
 #ifdef __cplusplus

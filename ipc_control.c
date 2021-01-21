@@ -1,5 +1,5 @@
 /*
-   UI message handler:
+   Control message handler:
     - recieves and decodes messages
     - updates base control structures for PUT operations
     - reads base control structures to provide config and operational values for GET operations
@@ -11,19 +11,20 @@
 #include <unistd.h> // needed for file descriptor read/write
 
 #include "ipc_fifo_transport.h"
-#include "ipc_ui_msg_handler.h"
+#include "ipc_control.h"
 #include "logging.h"
 
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include "message.pb.h"
 
-// the following macro strips the path, leaving just the filename does not strip the .c suffix
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
+// #ifdef IPC_CONTROL_TEST
+#include "globals_for_test.h"
+// #endif
 
-ipc_class_t ipc_desc = {0};
+ipc_transport_class_t ipc_desc = {0};
 char * my_name = "Base";
-char * other_name = "Ui";
+char * other_name = "Ctrl";
 
 char plog_string[256];
 
@@ -38,24 +39,23 @@ int byte_count_rcvd = 0;
 int byte_count_sent = 0;
 
 
-void ui_2_init(ui_2_desc_t *ui_2_id)
+void ipc_control_init(ipc_control_desc_t *descriptor)
 {
-	ui_2_desc_t *this_ui = (ui_2_desc_t *)ui_2_id;
-	if (this_ui->initialized == 0)
-		this_ui->ipc_desc = &ipc_desc;
+	ipc_control_desc_t *this_cntrl = (ipc_control_desc_t *)descriptor;
+	if (this_cntrl->initialized == 0)
+		this_cntrl->ipc_desc = &ipc_desc;
 	if (ipc_init(&ipc_desc, my_name, other_name) < 0)
 	{
-		LOG_ERROR( "ipc init failed!");
+		LOG_ERROR( "control ipc init failed!");
 	}
 	else
-		LOG_DEBUG( "ipc init OK.");
+		LOG_DEBUG( "control ipc init OK.");
 
-	this_ui->initialized = 1;
-	printf("ui_2_initialized\n");
+	this_cntrl->initialized = 1;
 }
 
-void ui_2_update(ui_2_desc_t *ui_2_id) {
-	ui_2_desc_t *this_ui = (ui_2_desc_t *)ui_2_id;
+void ipc_control_update(ipc_control_desc_t *descriptor) {
+	ipc_control_desc_t *this_cntrl = (ipc_control_desc_t *)descriptor;
 	if (ipc_msg_poll(&ipc_desc))
 	{
 		out_pbbuffer_len = 0;
@@ -83,11 +83,9 @@ void ui_2_update(ui_2_desc_t *ui_2_id) {
 			{
 				LOG_DEBUG("GET STATU - sending status");
 				b_status_msg msg_status = b_status_msg_init_zero;
-				#ifdef LINUX
-				msg_status.active = 1;
-				#endif
-				msg_status.soft_fault = this_ui->status_ptr->soft_fault;
-				msg_status.hard_fault = this_ui->status_ptr->hard_fault;
+				//TODO: add getting active
+				msg_status.soft_fault = soft_fault;
+				msg_status.hard_fault = hard_fault;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 				if (!pb_encode(&stream, b_status_msg_fields, &msg_status))
 				{
@@ -101,10 +99,10 @@ void ui_2_update(ui_2_desc_t *ui_2_id) {
 			{
 				LOG_DEBUG("GET MODE");
 				b_mode_msg msg_mode = b_mode_msg_init_zero;
-				msg_mode.mode = this_ui->mode_ptr->mode;
-				msg_mode.drill_workout_id = this_ui->mode_ptr->drill_workout_id;
-				msg_mode.drill_step = this_ui->mode_ptr->drill_step;
-				msg_mode.iterations = this_ui->mode_ptr->iterations;
+				msg_mode.mode = this_cntrl->mode_settings.mode;
+				msg_mode.drill_workout_id = this_cntrl->mode_settings.drill_workout_id;
+				msg_mode.drill_step = this_cntrl->mode_settings.drill_step;
+				// msg_mode.iterations = this_cntrl->mode_settings.iterations;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 				if (!pb_encode(&stream, b_mode_msg_fields, &msg_mode))
 				{
@@ -118,14 +116,10 @@ void ui_2_update(ui_2_desc_t *ui_2_id) {
 			{
 				LOG_DEBUG("GET PARMS");
 				b_params_msg params = b_params_msg_init_zero;
-				#ifdef LINUX
-				params.level = (uint32_t)boomer_level;
-				#else
-				params.level = this_ui->params_ptr->level;
-				#endif
-				params.speed = this_ui->params_ptr->speed;
-				params.elevation = this_ui->params_ptr->elevation;
-				params.frequency = this_ui->params_ptr->frequency;
+				params.level = this_cntrl->param_settings.level;
+				params.speed = this_cntrl->param_settings.speed;
+				params.elevation = this_cntrl->param_settings.elevation;
+				params.frequency = this_cntrl->param_settings.frequency;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 				if (!pb_encode(&stream, b_params_msg_fields, &params))
 				{
@@ -169,7 +163,9 @@ void ui_2_update(ui_2_desc_t *ui_2_id) {
 				} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
 				{
 					LOG_DEBUG("PUT MODE");
-					if (this_ui->status_ptr->active == 0)
+					uint32_t active = 0;
+					//TODO: qet state from state machines
+					if (active == 0)
 					{
 					// can only change the mode config params if boomer is not active
 					b_mode_msg in_message = b_mode_msg_init_zero;
@@ -183,14 +179,14 @@ void ui_2_update(ui_2_desc_t *ui_2_id) {
 						ipc_desc.num_bad_msgs++;
 					} else 
 					{ 
-						this_ui->mode_ptr->mode = in_message.mode;
-						this_ui->mode_ptr->drill_workout_id = in_message.drill_workout_id;
-						this_ui->mode_ptr->drill_step = in_message.drill_step;
-						this_ui->mode_ptr->iterations = in_message.iterations;
+						this_cntrl->mode_settings.mode = in_message.mode;
+						this_cntrl->mode_settings.drill_workout_id = in_message.drill_workout_id;
+						this_cntrl->mode_settings.drill_step = in_message.drill_step;
+						// this_cntrl->mode_settings.iterations = in_message.iterations;
 					}
 					} else
 					{
-						LOG_WARNING("PUT MODE rejected because boomer_base is Active");
+						LOG_WARNING("PUT MODE rejected because boomer_base is Active\n");
 						out_response_int = LOCKED;
 					}
 				} else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
@@ -207,15 +203,12 @@ void ui_2_update(ui_2_desc_t *ui_2_id) {
 						ipc_desc.num_bad_msgs++;
 					} else 
 					{
-						#ifdef LINUX
-						level_mod = (uint8_t)in_message.level;
+						this_cntrl->param_settings.level = in_message.level;
 						boomer_level = (uint8_t)in_message.level;
-						#else
-						this_ui->params_ptr->level = in_message.level;
-						#endif
-						this_ui->params_ptr->speed = in_message.speed;
-						this_ui->params_ptr->elevation = in_message.elevation;
-						this_ui->params_ptr->frequency = in_message.frequency;
+						// level_mod = (uint8_t)in_message.level;
+						this_cntrl->param_settings.speed = in_message.speed;
+						this_cntrl->param_settings.elevation = in_message.elevation;
+						this_cntrl->param_settings.frequency = in_message.frequency;
 					}
 				} else
 				{

@@ -3,9 +3,8 @@ syntax = "proto3";
 
 message b_status_msg { 
     bool active = 1;
-    bool done = 2; 
-    bool soft_fault = 3; 
-    bool hard_fault = 4;
+    bool soft_fault = 2; 
+    bool hard_fault = 3;
 }
 
 enum mode_e {
@@ -18,14 +17,16 @@ enum mode_e {
 message b_mode_msg { 
     mode_e mode = 1;
     int32 drill_workout_id = 2;
-    // string drill_workout_id = 2 [(nanopb).max_size = 64]; 
-    int32 drill_step = 3; 
-    int32 iterations = 4; 
+    int32 drill_step = 3;
+    // futures:
+    // int32 iterations = 4; 
+    // int32 duration = 5;
 }
 
 message b_params_msg { 
-    int32 level = 1;  //2-14 (divide by 2 to get 1.0 to 7.0) ?
-    int32 speed = 2;  //range?  Units?
-    int32 elevation = 3;    //range?  Units?
-    int32 frequency = 4;    //range?  Units?
+    int32 level = 1;  //0-12 represents 1 to 7; default 2; externally is 1.0 to 7.0 in increments of 0.5
+    int32 speed = 2;  //80 to 120 step of 2; default 100  - percent speedup
+    //TODO: change the following to height and delay
+    int32 elevation = 3;    //-32 to +32 step of 2; default 0; 2 units = rough 1 degree.
+    int32 frequency = 4;    //-2 to 2; step of .1; default 0; seconds of delay to add between ball throws in a drill
 }
