@@ -1,6 +1,6 @@
 .vscode
 *.dSYM
-*.pb*
+*.pb
 Makefile
 control_test
 .editorconfig
