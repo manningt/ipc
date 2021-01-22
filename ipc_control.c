@@ -13,12 +13,13 @@
 #include "ipc_fifo_transport.h"
 #include "ipc_control.h"
 #include "logging.h"
+#include "faults.h"
 
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include "message.pb.h"
 
-#ifndef LINUX
+#ifdef IPC_CONTROL_TESTING
 #include "globals_for_test.h"
 #endif
 
@@ -43,7 +44,10 @@ void ipc_control_init(ipc_control_desc_t *descriptor)
 {
 	ipc_control_desc_t *this_cntrl = (ipc_control_desc_t *)descriptor;
 	if (this_cntrl->initialized == 0)
+	{
 		this_cntrl->ipc_desc = &ipc_desc;
+		this_cntrl->mode_settings.mode = mode_e_GAME;
+	}
 	if (ipc_init(&ipc_desc, my_name, other_name) < 0)
 	{
 		LOG_ERROR( "control ipc init failed!");
@@ -83,7 +87,6 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			{
 				LOG_DEBUG("GET STATU - sending status");
 				b_status_msg msg_status = b_status_msg_init_zero;
-				printf("Game State: %d  --  Drill State: %d\n", game_state, drill_state);
 				msg_status.active = BASE_ACTIVE;
 				msg_status.soft_fault = soft_fault;
 				msg_status.hard_fault = hard_fault;
@@ -196,8 +199,9 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 							out_response_int = BAD_REQUEST;
 							ipc_desc.num_bad_msgs++;
 						} else 
-						{ 
-							this_cntrl->mode_settings.mode = in_message.mode;
+						{
+							// if a parameter is not populated in the message, it's value will be 0 in the decoded message
+							if (in_message.mode != mode_e_MODE_UNKNOWN) this_cntrl->mode_settings.mode = in_message.mode;
 							this_cntrl->mode_settings.drill_workout_id = in_message.drill_workout_id;
 							this_cntrl->mode_settings.drill_step = in_message.drill_step;
 							// this_cntrl->mode_settings.iterations = in_message.iterations;
