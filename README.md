@@ -11,6 +11,12 @@ It is the equivalent of what is done in top.c, e.g.:
 - Call to ipc_control_init before the while loop
 - call ipc_control_update in the while loop - this does a non-blocking poll for messages and processes a message if there is one.
 
+There should be no behavior change with the inclusion of ipc_control - the current screens should all work.  I have python scripts to send requests and process replies, and do unit/regression tests.  I will be putting those in a seperate repository, and will make an easy to use set of scripts to issue start/stop game/drill from the shell.
+
+The shell can be used to send and recieve messages that don't have parameters:
+* `echo "BIPC PUT START" >/dev/shm/CtrlToBase.fifo`
+* `tail -f /dev/shm/BaseToCtrl.fifo` (in a seperate window)
+
 The IPC messages are encoding and decoded using c-based [nanopb](https://github.com/nanopb/nanopb).
 
 3 files in the nanopb directory are included in _ipc_control.c_.  Ideally the build process would have `../nanopb` as an included directory. (My makefile does - I have yet to get the settings to have VS Code build it)
