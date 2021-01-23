@@ -48,13 +48,13 @@ uint8_t game_state = IDLE_GS;
 enum {IDLE_DS, NON_IDLE_DS};
 uint8_t drill_state = IDLE_DS;
 
-// uint32_t soft_fault = 0;
-// uint32_t hard_fault = 0;
+bool doubles_mode;
+bool FAKE_tiebreak_mode = false;
 
 void start_game()
 {
 	game_state = NON_IDLE_GS;
-	printf("Starting Game\n");
+	printf("Starting Game - Doubles: %d, TieBreaker: %d\n", doubles_mode, FAKE_tiebreak_mode);
 }
 void end_game()
 {
@@ -70,6 +70,10 @@ void end_drill()
 {
 	drill_state = IDLE_DS;
 	printf("Stopping Drill\n");
+}
+void load_drill(int16_t drill_id)
+{
+	printf("Loading Drill: %d\n", drill_id);
 }
 
 #ifdef __cplusplus

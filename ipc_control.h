@@ -62,6 +62,7 @@ typedef struct b_mode_settings {
 	uint32_t mode;
 	uint32_t drill_workout_id;
 	uint32_t drill_step;
+	bool temporary_tie_breaker_mode;
 } b_mode_settings_t;
 
 typedef struct ipc_control_desc {

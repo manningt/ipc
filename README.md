@@ -6,6 +6,10 @@ The 4 files to be used to include the control IPC are:
 
 A file _faults.h_ is included so that the UI can know if/why it has stopped (the hard & soft_fault variables).  This is a placeholder for fault reporting - it's implementation should be discussed.
 
+NOTE: To get this to compile with the existing code in infrastructure:
+* _line 12 in games.c: bool doubles_mode; should be moved to games.h_
+* this is so that it can be read/written by control code
+
 The file _ipc_control_test.c_ is used to make an executable for unit testing. It should _not_ be included in the boomer build.
 It is the equivalent of what is done in top.c, e.g.:
 - Call to ipc_control_init before the while loop

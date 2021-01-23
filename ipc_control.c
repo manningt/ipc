@@ -85,7 +85,7 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			// Process GETs
 			if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STATU], RSRC_STRING_LENGTH))
 			{
-				LOG_DEBUG("GET STATU - sending status");
+				LOG_DEBUG("GET STATU");
 				b_status_msg msg_status = b_status_msg_init_zero;
 				msg_status.active = BASE_ACTIVE;
 				msg_status.soft_fault = soft_fault;
@@ -107,6 +107,9 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 				msg_mode.mode = this_cntrl->mode_settings.mode;
 				msg_mode.drill_workout_id = this_cntrl->mode_settings.drill_workout_id;
 				msg_mode.drill_step = this_cntrl->mode_settings.drill_step;
+				msg_mode.doubles = doubles_mode;
+				// msg_mode.tie_breaker = tiebreak_mode;
+				msg_mode.tie_breaker = this_cntrl->mode_settings.temporary_tie_breaker_mode;
 				// msg_mode.iterations = this_cntrl->mode_settings.iterations;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 				if (!pb_encode(&stream, b_mode_msg_fields, &msg_mode))
@@ -164,7 +167,11 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			{
 				LOG_DEBUG("PUT START");
 				if (this_cntrl->mode_settings.mode == mode_e_GAME) start_game();
-				else if (this_cntrl->mode_settings.mode == mode_e_DRILL) start_drill();
+				else if (this_cntrl->mode_settings.mode == mode_e_DRILL)
+				{
+					load_drill( (int16_t) this_cntrl->mode_settings.drill_workout_id);
+					start_drill();
+				}
 				else LOG_ERROR("Invalid mode on start: %d", this_cntrl->mode_settings.mode);
 			}
 			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
@@ -204,6 +211,9 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 							if (in_message.mode != mode_e_MODE_UNKNOWN) this_cntrl->mode_settings.mode = in_message.mode;
 							this_cntrl->mode_settings.drill_workout_id = in_message.drill_workout_id;
 							this_cntrl->mode_settings.drill_step = in_message.drill_step;
+							doubles_mode =	in_message.doubles;
+							// tiebreak_mode = in_message.tie_breaker;
+							this_cntrl->mode_settings.temporary_tie_breaker_mode = in_message.tie_breaker;
 							// this_cntrl->mode_settings.iterations = in_message.iterations;
 						}
 					}
