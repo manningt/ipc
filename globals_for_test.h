@@ -9,6 +9,7 @@ extern "C" {
 
 // 'emulated' base variables
 uint8_t boomer_level = 2;
+uint8_t game_level_setting = 2;
 int8_t level_mod = 0;  //Level Modifier, units are half levels
 uint16_t frequency_mod = 0; //Modifies how often balls are thrown 200 = 200% speed 50 = 50% speed
 int8_t height_mod = 0;  //Height Modifier degrees
@@ -23,23 +24,23 @@ uint8_t speed_mod = 100;  //Speed Modifier 10 = 10% 200=200%
 #define LEVEL_MAX 12
 #define LEVEL_DEFAULT 2
 #define LEVEL_STEP 1
-int set_boomer_level(uint8_t level) {
+int set_game_level_setting(uint8_t level) {
 	int rc = 1;
 	if ((level >= LEVEL_MIN) && (level >= LEVEL_MAX))
 	{
-		boomer_level = level;
+		game_level_setting = level;
 		rc = 0;
 	}
 	return rc;
 }
-void increase_boomer_level(){
-	if(boomer_level <= LEVEL_MAX) boomer_level += LEVEL_STEP;
+void increase_game_level_setting(){
+	if(game_level_setting < LEVEL_MAX) game_level_setting += LEVEL_STEP;
 }
-void decrease_boomer_level(){
-	if(boomer_level >- LEVEL_MIN) boomer_level -= LEVEL_STEP;
+void decrease_game_level_setting(){
+	if(game_level_setting > LEVEL_MIN) game_level_setting -= LEVEL_STEP;
 }
-void reset_boomer_level(){
-	boomer_level = LEVEL_DEFAULT;
+void reset_game_level_setting(){
+	game_level_setting = LEVEL_DEFAULT;
 }
 
 
@@ -54,7 +55,8 @@ bool FAKE_tiebreak_mode = false;
 void start_game()
 {
 	game_state = NON_IDLE_GS;
-	printf("Starting Game - Doubles: %d, TieBreaker: %d\n", doubles_mode, FAKE_tiebreak_mode);
+	printf("Starting Game - Doubles: %d, TieBreaker: %d, Level: %d\n", \
+		doubles_mode, FAKE_tiebreak_mode, boomer_level);
 }
 void end_game()
 {
@@ -64,7 +66,8 @@ void end_game()
 void start_drill()
 {
 	drill_state = NON_IDLE_DS;
-	printf("Starting Drill\n");
+	printf("Starting Drill - Level: %d, Speed: %d, Height: %d, Delay: %d\n", \
+		level_mod, speed_mod, height_mod, frequency_mod);
 }
 void end_drill()
 {

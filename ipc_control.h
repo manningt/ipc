@@ -14,16 +14,16 @@ extern "C" {
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
 
-#define RSRC_STRING_LENGTH 5
+#define RSRC_STRING_LENGTH 4
 #define RSRC_OFFSET (sizeof(PROTOCOL_ID) + METHOD_STRING_LENGTH + 1)
 
 #define FOREACH_RESOURCE(RSRC) \
 			RSRC(INVALID_RESOURCE)  \
-			RSRC(STATU)  \
-			RSRC(START)  \
-			RSRC(STOP_) \
-			RSRC(MODE_) \
-			RSRC(PARMS) 
+			RSRC(STAT)  \
+			RSRC(STRT)  \
+			RSRC(STOP) \
+			RSRC(MODE) \
+			RSRC(PARM) 
 
 typedef enum RESOURCE_ENUM {
 	FOREACH_RESOURCE(GENERATE_ENUM)
@@ -37,7 +37,8 @@ static const char *RESOURCE_STRING[] = {
 #define FOREACH_METHOD(MTHD) \
 			MTHD(INVALID_METHOD)  \
 			MTHD(GET)  \
-			MTHD(PUT)
+			MTHD(PUT)  \
+			MTHD(RSP)
 
 typedef enum METHOD_ENUM {
 	FOREACH_METHOD(GENERATE_ENUM)
@@ -65,17 +66,17 @@ typedef struct b_mode_settings {
 	bool temporary_tie_breaker_mode;
 } b_mode_settings_t;
 
-typedef struct ipc_control_desc {
-	int (*init)(struct ipc_control_desc *self);
-	bool initialized;
-	ipc_transport_class_t * ipc_desc;
-	b_mode_settings_t mode_settings;
-} ipc_control_desc_t;
+typedef struct ipc_control_statistics {
+	uint32_t num_write_msgs;
+	uint32_t num_read_msgs;
+	uint32_t num_bad_msgs;
+} ipc_control_statistics_t;
 
-void ipc_control_init( ipc_control_desc_t *descriptor);
+// the following is global so they can be read by the control interface
+ipc_control_statistics_t ipc_control_statistics[2];
 
-void ipc_control_update(ipc_control_desc_t *descriptor);
-
+void ipc_control_init();
+void ipc_control_update();
 
 #ifdef __cplusplus
 }

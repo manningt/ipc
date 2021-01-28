@@ -20,12 +20,11 @@ int main(int argc, char *argv[])
 {
 	LOG_DEBUG( "ipc test start.");
 
-	ipc_control_desc_t ipc_control_desc = {0};
-	ipc_control_init(&ipc_control_desc);
+	ipc_control_init();
 
 	while(1)
 	{
-		ipc_control_update(&ipc_control_desc);
+		ipc_control_update();
 		sleep(1);
 	}
 

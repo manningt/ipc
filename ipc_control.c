@@ -23,7 +23,11 @@
 #include "globals_for_test.h"
 #endif
 
-ipc_transport_class_t ipc_desc = {0};
+uint8_t ipc_control_initialized = 0;
+b_mode_settings_t mode_settings;
+
+ipc_transport_class_t ipc_transport_desc[2] = {0};
+
 char * my_name = "Base";
 char * other_name = "Ctrl";
 
@@ -39,51 +43,54 @@ int out_buffer_len;
 int byte_count_rcvd = 0;
 int byte_count_sent = 0;
 
-
-void ipc_control_init(ipc_control_desc_t *descriptor)
+void ipc_control_init()
 {
-	ipc_control_desc_t *this_cntrl = (ipc_control_desc_t *)descriptor;
-	if (this_cntrl->initialized == 0)
+	if (ipc_control_initialized == 0)
 	{
-		this_cntrl->ipc_desc = &ipc_desc;
-		this_cntrl->mode_settings.mode = mode_e_GAME;
+		mode_settings.mode = mode_e_GAME;
 	}
-	if (ipc_init(&ipc_desc, my_name, other_name) < 0)
+	if (ipc_transport_init(&ipc_transport_desc[0], my_name, other_name) < 0)
 	{
 		LOG_ERROR( "control ipc init failed!");
 	}
 	else
 		LOG_DEBUG( "control ipc init OK.");
 
-	this_cntrl->initialized = 1;
+	ipc_control_statistics[0].num_bad_msgs = 0;
+	ipc_control_statistics[0].num_read_msgs = 0;
+	ipc_control_statistics[0].num_write_msgs = 0;
+	ipc_control_initialized = 1;
 }
 
-void ipc_control_update(ipc_control_desc_t *descriptor) {
-	ipc_control_desc_t *this_cntrl = (ipc_control_desc_t *)descriptor;
-	if (ipc_msg_poll(&ipc_desc))
+int encode_status(uint8_t * buffer) {
+	return sprintf((char *)buffer, "active:%d,softFlt:%d,hardFlt:%d", BASE_ACTIVE, soft_fault, hard_fault); 
+}
+
+void ipc_control_update() {
+	if (ipc_msg_poll(&ipc_transport_desc[0]))
 	{
 		out_pbbuffer_len = 0;
 		out_response_int = 200;
 		
-		byte_count_rcvd = read(ipc_desc.fd_read, buffer, sizeof(buffer));
+		byte_count_rcvd = ipc_read(&ipc_transport_desc[0], buffer, sizeof(buffer));
+
+		if (byte_count_rcvd > 0) ipc_control_statistics[0].num_read_msgs++;
 
 		if (byte_count_rcvd < 1)
 		{
 		// TODO: how to handle receive errors
-		perror("IPC Read error: ");
-		close(ipc_desc.fd_read);
-		ipc_desc.fd_read = 0;
+			LOG_DEBUG("read pipe closed.");
 		}
 		else if (memcmp(buffer, PROTOCOL_ID, sizeof(PROTOCOL_ID)-1) != 0)
       {
         LOG_ERROR( "BIPC not in header.");
         out_response_int = BAD_REQUEST;
-        ipc_desc.num_bad_msgs++;
+        ipc_control_statistics[0].num_bad_msgs++;
       }
       else if (!memcmp(buffer+sizeof(PROTOCOL_ID), METHOD_STRING[GET], METHOD_STRING_LENGTH))
       {
 			// Process GETs
-			if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STATU], RSRC_STRING_LENGTH))
+			if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STAT], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("GET STATU");
 				b_status_msg msg_status = b_status_msg_init_zero;
@@ -100,17 +107,17 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 				}
 				out_pbbuffer_len = stream.bytes_written;
 			}
-			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("GET MODE");
 				b_mode_msg msg_mode = b_mode_msg_init_zero;
-				msg_mode.mode = this_cntrl->mode_settings.mode;
-				msg_mode.drill_workout_id = this_cntrl->mode_settings.drill_workout_id;
-				msg_mode.drill_step = this_cntrl->mode_settings.drill_step;
+				msg_mode.mode = mode_settings.mode;
+				msg_mode.drill_workout_id = mode_settings.drill_workout_id;
+				msg_mode.drill_step = mode_settings.drill_step;
 				msg_mode.doubles = doubles_mode;
 				// msg_mode.tie_breaker = tiebreak_mode;
-				msg_mode.tie_breaker = this_cntrl->mode_settings.temporary_tie_breaker_mode;
-				// msg_mode.iterations = this_cntrl->mode_settings.iterations;
+				msg_mode.tie_breaker = mode_settings.temporary_tie_breaker_mode;
+				// msg_mode.iterations = mode_settings.iterations;
 				pb_ostream_t stream = pb_ostream_from_buffer(pbbuffer, sizeof(pbbuffer));
 				if (!pb_encode(&stream, b_mode_msg_fields, &msg_mode))
 				{
@@ -121,11 +128,11 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 				}
 				out_pbbuffer_len = stream.bytes_written;
 			}
-			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARM], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("GET PARMS");
 				b_params_msg params = b_params_msg_init_zero;
-				if (this_cntrl->mode_settings.mode == mode_e_GAME)
+				if (mode_settings.mode == mode_e_GAME)
 				{
 					params.level = boomer_level;
 				}
@@ -150,7 +157,7 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			{
 				sprintf(plog_string, "Unrecognized resource for GET: %s", buffer);
 				LOG_ERROR( plog_string);
-				ipc_desc.num_bad_msgs++;
+				ipc_control_statistics[0].num_bad_msgs++;
 			}
 		} else if (!memcmp(buffer+sizeof(PROTOCOL_ID), METHOD_STRING[PUT], METHOD_STRING_LENGTH))
 		{
@@ -158,30 +165,30 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			if (byte_count_rcvd > BIPC_HEADER_LENGTH)
 			{
 				//copy out message portion for decoding
-				in_pbbuffer_len = byte_count_rcvd - 15; // why does the define not work?? BIPC_HEADER_LENGTH;
+				in_pbbuffer_len = byte_count_rcvd - 14; // why does the define not work?? BIPC_HEADER_LENGTH;
 				memcpy(pbbuffer, buffer+BIPC_HEADER_LENGTH, in_pbbuffer_len);
 			}
 			else in_pbbuffer_len = 0;
 
-			if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[START], RSRC_STRING_LENGTH))
+			if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STRT], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("PUT START");
-				if (this_cntrl->mode_settings.mode == mode_e_GAME) start_game();
-				else if (this_cntrl->mode_settings.mode == mode_e_DRILL)
+				if (mode_settings.mode == mode_e_GAME) start_game();
+				else if (mode_settings.mode == mode_e_DRILL)
 				{
-					load_drill( (int16_t) this_cntrl->mode_settings.drill_workout_id);
+					load_drill( (int16_t) mode_settings.drill_workout_id);
 					start_drill();
 				}
-				else LOG_ERROR("Invalid mode on start: %d", this_cntrl->mode_settings.mode);
+				else LOG_ERROR("Invalid mode on start: %d", mode_settings.mode);
 			}
-			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP_], RSRC_STRING_LENGTH))
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[STOP], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("PUT STOP");
 				if (game_state != IDLE_GS) end_game();
 				else if (drill_state != IDLE_DS) end_drill();
 
 			}
-			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE_], RSRC_STRING_LENGTH))
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[MODE], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("PUT MODE");
 				if (BASE_ACTIVE == 0)
@@ -191,7 +198,7 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 					{
 						sprintf(plog_string, "No message component for: %s", buffer);
 						LOG_ERROR( plog_string);
-						ipc_desc.num_bad_msgs++;
+						ipc_control_statistics[0].num_bad_msgs++;
 						out_response_int = BAD_REQUEST;
 					}
 					else
@@ -204,17 +211,17 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 							LOG_ERROR( plog_string);
 							// TODO: handle decode errors
 							out_response_int = BAD_REQUEST;
-							ipc_desc.num_bad_msgs++;
+							ipc_control_statistics[0].num_bad_msgs++;
 						} else 
 						{
 							// if a parameter is not populated in the message, it's value will be 0 in the decoded message
-							if (in_message.mode != mode_e_MODE_UNKNOWN) this_cntrl->mode_settings.mode = in_message.mode;
-							this_cntrl->mode_settings.drill_workout_id = in_message.drill_workout_id;
-							this_cntrl->mode_settings.drill_step = in_message.drill_step;
+							if (in_message.mode != mode_e_MODE_UNKNOWN) mode_settings.mode = in_message.mode;
+							mode_settings.drill_workout_id = in_message.drill_workout_id;
+							mode_settings.drill_step = in_message.drill_step;
 							doubles_mode =	in_message.doubles;
 							// tiebreak_mode = in_message.tie_breaker;
-							this_cntrl->mode_settings.temporary_tie_breaker_mode = in_message.tie_breaker;
-							// this_cntrl->mode_settings.iterations = in_message.iterations;
+							mode_settings.temporary_tie_breaker_mode = in_message.tie_breaker;
+							// mode_settings.iterations = in_message.iterations;
 						}
 					}
 				}
@@ -224,14 +231,14 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 					out_response_int = LOCKED;
 				}
 			}
-			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARMS], RSRC_STRING_LENGTH))
+			else if (!memcmp(buffer+RSRC_OFFSET, RESOURCE_STRING[PARM], RSRC_STRING_LENGTH))
 			{
 				LOG_DEBUG("PUT PARMS");
 				if (in_pbbuffer_len < 1)
 				{
 					sprintf(plog_string, "No message component for: %s", buffer);
 					LOG_ERROR( plog_string);
-					ipc_desc.num_bad_msgs++;
+					ipc_control_statistics[0].num_bad_msgs++;
 					out_response_int = BAD_REQUEST;
 				}
 				else
@@ -244,11 +251,11 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 						LOG_ERROR( plog_string);
 						// TODO: handle decode errors
 						out_response_int = BAD_REQUEST;
-						ipc_desc.num_bad_msgs++;
+						ipc_control_statistics[0].num_bad_msgs++;
 					}
 					else 
 					{
-						if (this_cntrl->mode_settings.mode == mode_e_GAME)
+						if (mode_settings.mode == mode_e_GAME)
 						{
 							boomer_level = (uint8_t) in_message.level;
 						}
@@ -267,7 +274,7 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 				sprintf(plog_string, "Illegal resource for PUT: %s", buffer);
 				LOG_WARNING( plog_string);
 				out_response_int = NOT_FOUND;
-				ipc_desc.num_bad_msgs++;
+				ipc_control_statistics[0].num_bad_msgs++;
 			}
 		}
 		else
@@ -275,7 +282,7 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			sprintf(plog_string, "Unrecognized method: %s", buffer);
 			LOG_WARNING( plog_string);
 			out_response_int = METHOD_NOT_ALLOWED;
-			ipc_desc.num_bad_msgs++;
+			ipc_control_statistics[0].num_bad_msgs++;
 		}
 
 		// send response
@@ -289,7 +296,7 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			memcpy(buffer+BIPC_HEADER_LENGTH, pbbuffer, out_pbbuffer_len);
 			out_buffer_len += out_pbbuffer_len;
 		}
-		byte_count_sent = write(ipc_desc.fd_write, buffer, out_buffer_len);
+		byte_count_sent = ipc_write(&ipc_transport_desc[0], buffer, out_buffer_len);
 
 		if (byte_count_sent < out_buffer_len)
 		{
@@ -297,5 +304,6 @@ void ipc_control_update(ipc_control_desc_t *descriptor) {
 			LOG_ERROR( plog_string);
 			// TODO: handle IPC send errors
 		}
+		else ipc_control_statistics->num_write_msgs++;
 	}
 }

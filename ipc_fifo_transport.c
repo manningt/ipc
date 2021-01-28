@@ -53,7 +53,7 @@ void *openFifosThread(void *this_ipc) {
 }
 
 
-int ipc_init(ipc_transport_class_t *this_ipc, char * my_proc_name , char * other_proc_name) {
+int ipc_transport_init(ipc_transport_class_t * this_ipc, char * my_proc_name , char * other_proc_name) {
 	int rc;
 
 	if (this_ipc->initialized == 0)
@@ -76,16 +76,14 @@ int ipc_init(ipc_transport_class_t *this_ipc, char * my_proc_name , char * other
 			return(IPC_INIT_ERROR_MKFIFO_FAILED);
 			}
 		}
-		sprintf(this_ipc->plog_string, "Created FIFOs: %s & %s", this_ipc->fifo_fname_write, \
+		sprintf(this_ipc->plog_string, "Created FIFOs: %s & %s",  this_ipc->fifo_fname_write, \
 			this_ipc->fifo_fname_read);
 		LOG_DEBUG( this_ipc->plog_string);
 
-		this_ipc->num_read_msgs = 0;
-		this_ipc->num_write_msgs = 0;
-		this_ipc->num_bad_msgs = 0;
 		this_ipc->initialized = 1;
 		this_ipc->fd_read = 0;
 		this_ipc->fd_write = 0;
+
 		rc = pthread_create(&this_ipc->open_fifo_thread, NULL, openFifosThread, (void *)this_ipc);
 		if (rc)
 		{
@@ -114,17 +112,18 @@ int ipc_msg_poll(ipc_transport_class_t *this_ipc) {
 	return rc;
 }
 
-/*
-// plain text send/receive
-int ipc_msg_send(ipc_transport_class_t *this_ipc, char * message) {
-	int rc;
-	rc = write(this_ipc->fd_write, message, strlen(message)+1);
-	return rc;
+int ipc_read(ipc_transport_class_t * this_ipc, uint8_t * buffer, uint8_t size) {
+	uint32_t bytes_read;
+	bytes_read = read(this_ipc->fd_read, buffer, size);
+	if (bytes_read < 1)
+	{
+		perror("IPC Read error: ");
+		close(this_ipc->fd_read);
+		this_ipc->fd_read = 0;
+	}		
+	return bytes_read;
 }
 
-int ipc_msg_recv(ipc_transport_class_t *this_ipc, char * message, int message_size) {
-	int rc;
-	rc = read(this_ipc->fd_read, message, message_size);
-	return rc;
+int ipc_write(ipc_transport_class_t * this_ipc, uint8_t * buffer, uint8_t size) {
+	return write(this_ipc->fd_write, buffer, size);
 }
-*/

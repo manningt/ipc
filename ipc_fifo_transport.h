@@ -25,24 +25,21 @@ extern "C" {
 #define FIFO_PATH_PREFIX "/tmp"
 #endif
 
-
 typedef struct ipc_transport_class {
-	int (*init)(struct ipc_transport_class *self,  char * my_proc_name, char * other_proc_name);
+	// int (*init)(struct ipc_transport_class *self,  char * my_proc_name, char * other_proc_name);
 	bool initialized;
 	int fd_read; // file descriptor to read from the FIFO
 	int fd_write;
 	char fifo_fname_read[FIFO_PATH_LENGTH];
 	char fifo_fname_write[FIFO_PATH_LENGTH];
-	uint32_t num_write_msgs;
-	uint32_t num_read_msgs;
-	uint32_t num_bad_msgs;
-
 	pthread_t open_fifo_thread;
 	char plog_string[80];
 } ipc_transport_class_t;
 
-int ipc_init(ipc_transport_class_t *ipc_id, char * from, char * to);
-int ipc_msg_poll(ipc_transport_class_t *ipc_id);
+int ipc_transport_init(ipc_transport_class_t * ipct_desc, char * from, char * to);
+int ipc_msg_poll(ipc_transport_class_t * ipct_desc);
+int ipc_read(ipc_transport_class_t * ipct_desc, uint8_t * buffer, uint8_t size);
+int ipc_write(ipc_transport_class_t * ipct_desc, uint8_t * buffer, uint8_t size);
 
 #ifdef __cplusplus
 }
