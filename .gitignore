@@ -5,3 +5,4 @@ Makefile
 control_test
 .editorconfig
 logging.*
+global_parameters.h

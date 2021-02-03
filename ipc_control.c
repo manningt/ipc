@@ -20,26 +20,15 @@
 #include "globals_for_test.h"
 #endif
 
-uint8_t ipc_control_initialized = 0;
-
-ipc_transport_class_t ipc_transport_desc[2] = {0};
-
-char * my_name = "Base";
-char * other_name = "Ctrl";
-
-char plog_string[256];
-
-uint8_t out_message[MAX_MESSAGE_SIZE] ;
-uint8_t out_message_len;
-int out_response_int;
-int out_buffer_len;
-
-uint8_t buffer[MAX_MESSAGE_SIZE] = {0};
-int byte_count_rcvd;
-int byte_count_sent;
+static uint8_t ipc_control_initialized = 0;
+static ipc_transport_class_t ipc_transport_desc[2] = {0};
 
 void ipc_control_init()
 {
+	char * my_name = "Base";
+	char * ui_name = "Ui";
+	char * ctrl_name = "Ctrl";
+
 	if (ipc_control_initialized == 0)
 	{
 		mode_settings.mode = GAME_MODE_E;
@@ -47,7 +36,7 @@ void ipc_control_init()
 		ipc_control_statistics[0].num_read_msgs = 0;
 		ipc_control_statistics[0].num_write_msgs = 0;
 	}
-	if (ipc_transport_init(&ipc_transport_desc[0], my_name, other_name) < 0)
+	if (ipc_transport_init(&ipc_transport_desc[0], my_name, ctrl_name) < 0)
 	{
 		LOG_ERROR( "control ipc init failed!");
 	}
@@ -56,23 +45,22 @@ void ipc_control_init()
 	ipc_control_initialized = 1;
 }
 
-int encode_status() {
-	return sprintf((char *)out_message, "active:%d,softFlt:%d,hardFlt:%d", BASE_ACTIVE, soft_fault, hard_fault); 
+int encode_status(char *out_msg_params) {
+	return sprintf(out_msg_params, "active:%d,softFlt:%d,hardFlt:%d", BASE_ACTIVE, soft_fault, hard_fault); 
 }
 
-int encode_mode() {
-	return sprintf((char *)out_message, "mode:%d,id:%d,step:%d,doubles:%d,tiebreaker:%d", \
+int encode_mode(char *out_msg_params) {
+	return sprintf(out_msg_params, "mode:%d,id:%d,step:%d,doubles:%d,tiebreaker:%d", \
 		mode_settings.mode, mode_settings.drill_workout_id, mode_settings.drill_step, \
 		doubles_mode, FAKE_tiebreak_mode );
 }
 
-int decode_mode() {
+int decode_mode(char * buffer) {
 	// LOG_DEBUG("decoding: %s\n", buffer);
 	char * item_ptr;
 	char * end_item_ptr;
-	char * buff_ptr = (char * ) buffer;
-	buff_ptr += HEADER_LENGTH+1;  //skip over header
-	item_ptr = strtok_r ( buff_ptr,",", &end_item_ptr);
+	// skip header when doing token processing:
+	item_ptr = strtok_r ( (buffer + HEADER_LENGTH+1),",", &end_item_ptr);
 	while (item_ptr != NULL)
 	{
 		char * kv_end;
@@ -108,18 +96,17 @@ int decode_mode() {
 	}
 	return RESP_OK;
 }
-int encode_parms() {
-	return sprintf((char *)out_message, "level:%d,delay:%d,height:%d,speed:%d", \
+int encode_parms(char *out_msg_params) {
+	return sprintf(out_msg_params, "level:%d,delay:%d,height:%d,speed:%d", \
 		boomer_level, delay_mod, height_mod, speed_mod);
 }
 
-int decode_parms() {
+int decode_parms(char * buffer) {
 	// LOG_DEBUG("decoding: %s\n", buffer);
 	char * item_ptr;
 	char * end_item_ptr;
-	char * buff_ptr = (char * ) buffer;
-	buff_ptr += HEADER_LENGTH+1;  //skip over header
-	item_ptr = strtok_r ( buff_ptr,",", &end_item_ptr);
+	int rc = RESP_OK;
+	item_ptr = strtok_r ( (buffer + HEADER_LENGTH+1),",", &end_item_ptr);
 	while (item_ptr != NULL)
 	{
 		char * kv_end;
@@ -128,7 +115,7 @@ int decode_parms() {
 		// LOG_DEBUG("key: %s   Value: %s   case: %c\n", key_ptr, value_ptr, key_ptr[0]);
 		switch(key_ptr[0]) {
 			case 'l':
-				boomer_level = atoi(value_ptr);
+				boomer_level = (uint8_t) atoi(value_ptr);
 				// LOG_DEBUG("level = %d\n",boomer_level);
 				break;
 			case 's':
@@ -141,6 +128,8 @@ int decode_parms() {
 				break;
 			case 'd':
 				delay_mod = (int16_t) atoi(value_ptr);
+				// if ( (set_drill_delay((int16_t) atoi(value_ptr))) > 0)
+				// 	rc = BAD_REQUEST;
 				// LOG_DEBUG("delay = %d\n", delay_mod);
 				break;
 			default:
@@ -149,17 +138,15 @@ int decode_parms() {
 		}
 		item_ptr = strtok_r (NULL, "," , &end_item_ptr);
 	}
-	return RESP_OK;
+	return rc;
 }
 
-int decode_cam_calibration(uint8_t camera_id) {
+int decode_cam_calibration(char * buffer, uint8_t camera_id) {
 	// LOG_DEBUG("decoding: %s\n", buffer);
 	// camera_id doesn't have to be checked for bounds, since it's generated in the RSRC decode
 	char * item_ptr;
 	char * end_item_ptr;
-	char * buff_ptr = (char * ) buffer;
-	buff_ptr += HEADER_LENGTH+1;  //skip over header
-	item_ptr = strtok_r ( buff_ptr,",", &end_item_ptr);
+	item_ptr = strtok_r ( (buffer + HEADER_LENGTH+1),",", &end_item_ptr);
 	uint8_t pt_index;
 	bool is_y_point;
 	while (item_ptr != NULL)
@@ -185,11 +172,10 @@ int decode_cam_calibration(uint8_t camera_id) {
 	return RESP_OK;
 }
 
-int encode_cam_calibration(uint8_t camera_id) {
+int encode_cam_calibration(char *out_msg_params, uint8_t camera_id) {
 	char point_id = POINT_START_CHAR;
 	bool is_y_point;
 	char item[16];
-	memset(out_message,0,4); //clear the beginning out message so strcat works
 	for (int i = 0; i < NUM_CAM_CALIB_POINTS*2; i++) {
 		is_y_point = i & 1; //even indexes are X, odds are Y in the point structure
 		if (is_y_point)
@@ -198,20 +184,27 @@ int encode_cam_calibration(uint8_t camera_id) {
 			sprintf(item,"%c:%d", point_id, cam_calib_pts[camera_id].pt[i/2].x);
 		if (i < ((NUM_CAM_CALIB_POINTS*2)-1))
 			strcat(item, ",");
-		strcat((char *)out_message, item);
+		strcat(out_msg_params, item);
 		point_id++;
 	}
-	return strlen((char *)out_message);
+	return strlen(out_msg_params);
 }
 
 
 void ipc_control_update() {
 	if (ipc_msg_poll(&ipc_transport_desc[0]))
 	{
-		// out_pbbuffer_len = 0;
-		out_message_len = 0;
-		out_response_int = RESP_OK;
-		memset(buffer,0,sizeof(buffer)); 
+		// buffer is used for receiving messages and for concat the outbound message
+		uint8_t buffer[MAX_MESSAGE_SIZE] = {0};
+
+		int byte_count_rcvd;
+		int byte_count_sent;
+		//the message parameters are carried in a json-like string
+		uint8_t out_msg_params[MAX_MESSAGE_SIZE] = {0};
+		int out_msg_params_len = 0;
+		int out_response_code = RESP_OK;
+		int out_buffer_len;
+		
 		byte_count_rcvd = ipc_read(&ipc_transport_desc[0], buffer, sizeof(buffer));
 		if (byte_count_rcvd > 0) ipc_control_statistics[0].num_read_msgs++;
 		if (byte_count_rcvd < 1)
@@ -223,16 +216,16 @@ void ipc_control_update() {
 			case 'G':
 				//handle GET
 				if (!memcmp(buffer+RSRC_OFFSET, STAT_RSRC, RSRC_STRING_LENGTH)) {
-					out_message_len = encode_status();
+					out_msg_params_len = encode_status((char *)out_msg_params);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
-					out_message_len = encode_mode();
+					out_msg_params_len = encode_mode((char *)out_msg_params);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, LDSH_RSRC, RSRC_STRING_LENGTH)) {
-					out_message_len = encode_parms();
+					out_msg_params_len = encode_parms((char *)out_msg_params);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_message_len = encode_cam_calibration(LEFT_CAMERA_ID);
+					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, LEFT_CAMERA_ID);
 				}
 				break;
 			case 'P':
@@ -240,15 +233,15 @@ void ipc_control_update() {
 				if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
 					// can only change the mode config params if boomer is not active
 					if (BASE_ACTIVE == 0)
-						out_response_int = decode_mode();
+						out_response_code = decode_mode((char *) buffer);
 					else
-						out_response_int = LOCKED;
+						out_response_code = LOCKED;
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, LDSH_RSRC, RSRC_STRING_LENGTH)) {
-					out_response_int = decode_parms();
+					out_response_code = decode_parms((char *) buffer);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_response_int = decode_cam_calibration(LEFT_CAMERA_ID);
+					out_response_code = decode_cam_calibration((char *) buffer, LEFT_CAMERA_ID);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, STRT_RSRC, RSRC_STRING_LENGTH))
 				{
@@ -276,11 +269,11 @@ void ipc_control_update() {
 		}
 
 		// send response
-		out_buffer_len = sprintf((char *)buffer, "%s  %3d", RSP_METHOD, out_response_int);
-		if (out_message_len > 0)
+		out_buffer_len = sprintf((char *)buffer, "%s  %3d", RSP_METHOD, out_response_code);
+		if (out_msg_params_len > 0)
 		{
-			strcat((char *) buffer, (char *)out_message);
-			out_buffer_len += out_message_len;
+			strcat((char *) buffer, (char *)out_msg_params);
+			out_buffer_len += out_msg_params_len;
 		}
 		byte_count_sent = ipc_write(&ipc_transport_desc[0], buffer, out_buffer_len);
 
