@@ -10,7 +10,7 @@ extern "C" {
 // 'emulated' base variables
 uint8_t boomer_level = 2;
 // int8_t level_mod = 0;
-uint16_t delay_mod = 0; 
+int16_t delay_mod = 0; 
 int8_t height_mod = 0; 
 uint8_t speed_mod = 100; 
 

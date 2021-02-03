@@ -132,15 +132,15 @@ int decode_parms() {
 				// LOG_DEBUG("level = %d\n",boomer_level);
 				break;
 			case 's':
-				speed_mod = atoi(value_ptr);
+				speed_mod = (uint8_t) atoi(value_ptr);
 				// LOG_DEBUG("speed = %d\n", speed_mod );
 				break;
 			case 'h':
-				height_mod = atoi(value_ptr);
+				height_mod = (int8_t) atoi(value_ptr);
 				// LOG_DEBUG("height = %d\n",height_mod);
 				break;
 			case 'd':
-				delay_mod = atoi(value_ptr);
+				delay_mod = (int16_t) atoi(value_ptr);
 				// LOG_DEBUG("delay = %d\n", delay_mod);
 				break;
 			default:
