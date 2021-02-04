@@ -81,35 +81,19 @@ int decode_mode(char * buffer) {
 		char *key_ptr = strtok_r(item_ptr, ":", &kv_end);
 		char *value_ptr = strtok_r(NULL, ":", &kv_end);
 		// LOG_DEBUG("key: %s   Value: %s   case: %c\n", key_ptr, value_ptr, key_ptr[0]);
-		switch(key_ptr[0]) {
-			case MODE_PARAM[0]:
-				mode_settings.mode = atoi(value_ptr);
-				//LOG_DEBUG("mode = %d\n", mode_settings.mode);
-				break;
-			case ID_PARAM[0]:
-				mode_settings.drill_workout_id = atoi(value_ptr);
-				//LOG_DEBUG("drill id = %d\n", mode_settings.drill_workout_id );
-				break;
-			case STEP_PARAM[0]:
-				mode_settings.drill_step = atoi(value_ptr);
-				//LOG_DEBUG("step id = %d\n",mode_settings.drill_step);
-				break;
-			case DOUBLES_PARAM[0]:
-				doubles_mode = atoi(value_ptr);
-				//LOG_DEBUG("doubles = %d\n", doubles_mode);
-				break;
-			case TIEBREAKER_PARAM[0]:
-				FAKE_tiebreak_mode = atoi(value_ptr);
-				//LOG_DEBUG("tiebreaker = %d\n", FAKE_tiebreak_mode);
-				break;
-			case SIM_MODE_PARAM[0]:
-				simulation_mode = atoi(value_ptr);
-				//LOG_DEBUG("simulation_mode = %d\n", simulation_mode);
-				break;
-			default:
-			LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
-			break;
-		}
+		if (key_ptr[0] == MODE_PARAM[0])
+			mode_settings.mode = atoi(value_ptr);
+		else if (key_ptr[0] == ID_PARAM[0])
+			mode_settings.drill_workout_id = atoi(value_ptr);
+		else if (key_ptr[0] == STEP_PARAM[0])
+			mode_settings.drill_step = atoi(value_ptr);
+		else if (key_ptr[0] == DOUBLES_PARAM[0])
+			doubles_mode = atoi(value_ptr);
+		else if (key_ptr[0] == TIEBREAKER_PARAM[0])
+			FAKE_tiebreak_mode = atoi(value_ptr);
+		else if (key_ptr[0] == SIM_MODE_PARAM[0])
+			simulation_mode = atoi(value_ptr);
+		else LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
 		item_ptr = strtok_r (NULL, "," , &end_item_ptr);
 	}
 	return RESP_OK;
@@ -131,29 +115,16 @@ int decode_parms(char * buffer) {
 		char *key_ptr = strtok_r(item_ptr, ":", &kv_end);
 		char *value_ptr = strtok_r(NULL, ":", &kv_end);
 		// LOG_DEBUG("key: %s   Value: %s   case: %c\n", key_ptr, value_ptr, key_ptr[0]);
-		switch(key_ptr[0]) {
-			case LEVEL_PARAM[0]:
-				boomer_level = (uint8_t) atoi(value_ptr);
-				// LOG_DEBUG("level = %d\n",boomer_level);
-				break;
-			case SPEED_PARAM[0]:
-				speed_mod = (uint8_t) atoi(value_ptr);
-				// LOG_DEBUG("speed = %d\n", speed_mod );
-				break;
-			case HEIGHT_PARAM[0]:
-				height_mod = (int8_t) atoi(value_ptr);
-				// LOG_DEBUG("height = %d\n",height_mod);
-				break;
-			case DELAY_PARAM[0]:
-				delay_mod = (int16_t) atoi(value_ptr);
-				// if ( (set_drill_delay((int16_t) atoi(value_ptr))) > 0)
-				// 	rc = BAD_REQUEST;
-				// LOG_DEBUG("delay = %d\n", delay_mod);
-				break;
-			default:
+		if (key_ptr[0] == LEVEL_PARAM[0])
+			boomer_level = (uint8_t) atoi(value_ptr);
+		else if (key_ptr[0] == SPEED_PARAM[0])
+			speed_mod = (uint8_t) atoi(value_ptr);
+		else if (key_ptr[0] == HEIGHT_PARAM[0])
+			height_mod = (int8_t) atoi(value_ptr);
+		else if (key_ptr[0] == DELAY_PARAM[0])
+			delay_mod = (int16_t) atoi(value_ptr);
+		else
 			LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
-			break;
-		}
 		item_ptr = strtok_r (NULL, "," , &end_item_ptr);
 	}
 	return rc;
