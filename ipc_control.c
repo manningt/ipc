@@ -23,7 +23,7 @@ extern uint8_t game_state, drill_state;
 #define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
 
 extern bool doubles_mode;
-extern bool FAKE_tiebreak_mode;
+extern bool tiebreak_mode;
 extern bool simulation_mode;
 
 extern uint8_t boomer_level, speed_mod;
@@ -60,13 +60,14 @@ void ipc_control_init()
 
 int encode_status(char *out_msg_params) {
 	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d", \
-	ACTIVE_PARAM, BASE_ACTIVE, SOFT_FAULT_PARAM, soft_fault, HARD_FAULT_PARAM, hard_fault); 
+	// ACTIVE_PARAM, BASE_ACTIVE, SOFT_FAULT_PARAM, soft_fault, HARD_FAULT_PARAM, hard_fault); 
+	ACTIVE_PARAM, BASE_ACTIVE, SOFT_FAULT_PARAM, 0, HARD_FAULT_PARAM, 0); 
 }
 
 int encode_mode(char *out_msg_params) {
 	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
 		MODE_PARAM, mode_settings.mode, ID_PARAM, mode_settings.drill_workout_id, STEP_PARAM, mode_settings.drill_step, \
-		DOUBLES_PARAM, doubles_mode, TIEBREAKER_PARAM, FAKE_tiebreak_mode, SIM_MODE_PARAM, simulation_mode);
+		DOUBLES_PARAM, doubles_mode, TIEBREAKER_PARAM, tiebreak_mode, SIM_MODE_PARAM, simulation_mode);
 }
 
 int decode_mode(char * buffer) {
@@ -90,7 +91,7 @@ int decode_mode(char * buffer) {
 		else if (key_ptr[0] == DOUBLES_PARAM[0])
 			doubles_mode = atoi(value_ptr);
 		else if (key_ptr[0] == TIEBREAKER_PARAM[0])
-			FAKE_tiebreak_mode = atoi(value_ptr);
+			tiebreak_mode = atoi(value_ptr);
 		else if (key_ptr[0] == SIM_MODE_PARAM[0])
 			simulation_mode = atoi(value_ptr);
 		else LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
