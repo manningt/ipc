@@ -14,11 +14,24 @@
 #include "ipc_fifo_transport.h"
 #include "ipc_control.h"
 #include "logging.h"
-#include "faults.h"
 
 #ifdef IPC_CONTROL_TESTING
-#include "globals_for_test.h"
+#include "ipc_test_support.h"
 #endif
+
+extern uint8_t game_state, drill_state;
+#define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
+
+extern bool doubles_mode;
+extern bool FAKE_tiebreak_mode;
+extern bool simulation_mode;
+
+extern uint8_t boomer_level, speed_mod;
+extern int8_t height_mod;
+extern int16_t delay_mod;
+
+extern uint32_t soft_fault;
+extern uint32_t hard_fault;
 
 static uint8_t ipc_control_initialized = 0;
 static ipc_transport_class_t ipc_transport_desc[2] = {0};
@@ -46,13 +59,14 @@ void ipc_control_init()
 }
 
 int encode_status(char *out_msg_params) {
-	return sprintf(out_msg_params, "active:%d,softFlt:%d,hardFlt:%d", BASE_ACTIVE, soft_fault, hard_fault); 
+	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d", \
+	ACTIVE_PARAM, BASE_ACTIVE, SOFT_FAULT_PARAM, soft_fault, HARD_FAULT_PARAM, hard_fault); 
 }
 
 int encode_mode(char *out_msg_params) {
-	return sprintf(out_msg_params, "mode:%d,id:%d,step:%d,doubles:%d,tiebreaker:%d", \
-		mode_settings.mode, mode_settings.drill_workout_id, mode_settings.drill_step, \
-		doubles_mode, FAKE_tiebreak_mode );
+	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
+		MODE_PARAM, mode_settings.mode, ID_PARAM, mode_settings.drill_workout_id, STEP_PARAM, mode_settings.drill_step, \
+		DOUBLES_PARAM, doubles_mode, TIEBREAKER_PARAM, FAKE_tiebreak_mode, SIM_MODE_PARAM, simulation_mode);
 }
 
 int decode_mode(char * buffer) {
@@ -68,25 +82,29 @@ int decode_mode(char * buffer) {
 		char *value_ptr = strtok_r(NULL, ":", &kv_end);
 		// LOG_DEBUG("key: %s   Value: %s   case: %c\n", key_ptr, value_ptr, key_ptr[0]);
 		switch(key_ptr[0]) {
-			case 'm':
+			case MODE_PARAM[0]:
 				mode_settings.mode = atoi(value_ptr);
 				//LOG_DEBUG("mode = %d\n", mode_settings.mode);
 				break;
-			case 'i':
+			case ID_PARAM[0]:
 				mode_settings.drill_workout_id = atoi(value_ptr);
 				//LOG_DEBUG("drill id = %d\n", mode_settings.drill_workout_id );
 				break;
-			case 's':
+			case STEP_PARAM[0]:
 				mode_settings.drill_step = atoi(value_ptr);
 				//LOG_DEBUG("step id = %d\n",mode_settings.drill_step);
 				break;
-			case 'd':
+			case DOUBLES_PARAM[0]:
 				doubles_mode = atoi(value_ptr);
 				//LOG_DEBUG("doubles = %d\n", doubles_mode);
 				break;
-			case 't':
+			case TIEBREAKER_PARAM[0]:
 				FAKE_tiebreak_mode = atoi(value_ptr);
 				//LOG_DEBUG("tiebreaker = %d\n", FAKE_tiebreak_mode);
+				break;
+			case SIM_MODE_PARAM[0]:
+				simulation_mode = atoi(value_ptr);
+				//LOG_DEBUG("simulation_mode = %d\n", simulation_mode);
 				break;
 			default:
 			LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
@@ -97,8 +115,8 @@ int decode_mode(char * buffer) {
 	return RESP_OK;
 }
 int encode_parms(char *out_msg_params) {
-	return sprintf(out_msg_params, "level:%d,delay:%d,height:%d,speed:%d", \
-		boomer_level, delay_mod, height_mod, speed_mod);
+	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d", \
+		LEVEL_PARAM, boomer_level, DELAY_PARAM, delay_mod, HEIGHT_PARAM, height_mod, SPEED_PARAM, speed_mod);
 }
 
 int decode_parms(char * buffer) {
@@ -114,19 +132,19 @@ int decode_parms(char * buffer) {
 		char *value_ptr = strtok_r(NULL, ":", &kv_end);
 		// LOG_DEBUG("key: %s   Value: %s   case: %c\n", key_ptr, value_ptr, key_ptr[0]);
 		switch(key_ptr[0]) {
-			case 'l':
+			case LEVEL_PARAM[0]:
 				boomer_level = (uint8_t) atoi(value_ptr);
 				// LOG_DEBUG("level = %d\n",boomer_level);
 				break;
-			case 's':
+			case SPEED_PARAM[0]:
 				speed_mod = (uint8_t) atoi(value_ptr);
 				// LOG_DEBUG("speed = %d\n", speed_mod );
 				break;
-			case 'h':
+			case HEIGHT_PARAM[0]:
 				height_mod = (int8_t) atoi(value_ptr);
 				// LOG_DEBUG("height = %d\n",height_mod);
 				break;
-			case 'd':
+			case DELAY_PARAM[0]:
 				delay_mod = (int16_t) atoi(value_ptr);
 				// if ( (set_drill_delay((int16_t) atoi(value_ptr))) > 0)
 				// 	rc = BAD_REQUEST;

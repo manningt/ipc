@@ -21,6 +21,8 @@ extern "C" {
 #define STAT_RSRC "STAT"
 #define STOP_RSRC "STOP"
 #define STRT_RSRC "STRT"
+#define PAUS_RSRC "PAUS"
+#define RESU_RSRC "RESU"
 #define MODE_RSRC "MODE"
 #define LDSH_RSRC "LDSH"  //level, delay, speed, height - can be changed on the fly
 #define LCAM_RSRC "LCAM"  //left cam
@@ -30,6 +32,30 @@ extern "C" {
 #define GAME_MODE_E 1
 #define DRILL_MODE_E 2
 #define WORKOUT_MODE_E 3
+
+// status parameters
+#define ACTIVE_PARAM "active"
+#define SOFT_FAULT_PARAM "sFault"
+#define HARD_FAULT_PARAM "hFault"
+// mode parameters
+#define MODE_PARAM "mode"
+#define ID_PARAM "id" //drill or workout ID
+#define STEP_PARAM "step" //drill step to execture
+#define DOUBLES_PARAM "doubles" //single or double mode
+#define TIEBREAKER_PARAM "tiebreaker"
+#define SIM_MODE_PARAM "z_sim"  //used to set/clear simulation mode
+// drill & game parameters
+#define LEVEL_PARAM "level"
+#define SPEED_PARAM "speed"
+#define DELAY_PARAM "delay"
+#define HEIGHT_PARAM "height"
+// game statistics
+#define BOOMER_POINTS_PARAM "1b_pts"
+#define PLAYER_POINTS_PARAM "2p_pts"
+#define BOOMER_GAMES_PARAM "3b_games"
+#define PLAYER_GAMES_PARAM "4p_games"
+#define BOOMER_SETS_PARAM "5b_sets"
+#define PLAYER_SETS_PARAM "6p_sets"
 
 #define NUM_CAM_CALIB_POINTS 7
 #define POINT_START_CHAR 'a'
@@ -45,8 +71,6 @@ extern "C" {
 #define UNPROCESSABLE_ENTITY 422  //used for encode errors - there was not a great error response for this
 
 //-=-=- end of exported defines
-
-#define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
 
 // the following is maintained by the interface - there is no boomer_base equivalent variables.
 typedef struct b_mode_settings {
