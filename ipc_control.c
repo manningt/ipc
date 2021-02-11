@@ -33,6 +33,8 @@ extern int16_t delay_mod;
 extern uint32_t soft_fault;
 extern uint32_t hard_fault;
 
+extern double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2];
+
 static uint8_t ipc_control_initialized = 0;
 static ipc_transport_class_t ipc_transport_desc[2] = {0};
 
@@ -138,7 +140,6 @@ int decode_cam_calibration(char * buffer, uint8_t camera_id) {
 	char * end_item_ptr;
 	item_ptr = strtok_r ( (buffer + HEADER_LENGTH+1),",", &end_item_ptr);
 	uint8_t pt_index;
-	bool is_y_point;
 	while (item_ptr != NULL)
 	{
 		char * kv_end;
@@ -151,12 +152,7 @@ int decode_cam_calibration(char * buffer, uint8_t camera_id) {
 			return BAD_REQUEST;
 		}
 		pt_index = key_ptr[0] - POINT_START_CHAR; //make 'a-z' an integer
-		is_y_point = pt_index & 1; //even index are X, odds are Y in the point structure
-		pt_index = pt_index/2;
-		if (is_y_point)
-			cam_calib_pts[camera_id].pt[pt_index].y = atoi(value_ptr);
-		else
-			cam_calib_pts[camera_id].pt[pt_index].x = atoi(value_ptr);
+		cam_calib_pts[camera_id][pt_index/2][pt_index & 1] = atof(value_ptr);
 		item_ptr = strtok_r (NULL, "," , &end_item_ptr);
 	}
 	return RESP_OK;
@@ -164,18 +160,17 @@ int decode_cam_calibration(char * buffer, uint8_t camera_id) {
 
 int encode_cam_calibration(char *out_msg_params, uint8_t camera_id) {
 	char point_id = POINT_START_CHAR;
-	bool is_y_point;
 	char item[16];
 	for (int i = 0; i < NUM_CAM_CALIB_POINTS*2; i++) {
-		is_y_point = i & 1; //even indexes are X, odds are Y in the point structure
-		if (is_y_point)
-			sprintf(item,"%c:%d", point_id, cam_calib_pts[camera_id].pt[i/2].y);
-		else
-			sprintf(item,"%c:%d", point_id, cam_calib_pts[camera_id].pt[i/2].x);
+		sprintf(item,"%c:%.1f", point_id, cam_calib_pts[camera_id][i/2][i & 1]);
 		if (i < ((NUM_CAM_CALIB_POINTS*2)-1))
 			strcat(item, ",");
 		strcat(out_msg_params, item);
+		// printf(" calib: %s\n", out_msg_params);
 		point_id++;
+		// kludge: put out as many points as possible, but stop if buffer size will be exceeded.
+		if (strlen(out_msg_params) > (MAX_MESSAGE_SIZE-10))
+			break;
 	}
 	return strlen(out_msg_params);
 }
@@ -211,11 +206,18 @@ void ipc_control_update() {
 				else if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
 					out_msg_params_len = encode_mode((char *)out_msg_params);
 				}
-				else if (!memcmp(buffer+RSRC_OFFSET, LDSH_RSRC, RSRC_STRING_LENGTH)) {
+				else if (!memcmp(buffer+RSRC_OFFSET, OPTS_RSRC, RSRC_STRING_LENGTH)) {
 					out_msg_params_len = encode_parms((char *)out_msg_params);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, LEFT_CAMERA_ID);
+					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, LEFT_CAM);
+				}
+				else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
+					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, RIGHT_CAM);
+				}
+				else {
+					LOG_WARNING("Unrecognized GET resource: %s", buffer);
+					out_response_code = BAD_REQUEST;
 				}
 				break;
 			case 'P':
@@ -227,11 +229,14 @@ void ipc_control_update() {
 					else
 						out_response_code = LOCKED;
 				}
-				else if (!memcmp(buffer+RSRC_OFFSET, LDSH_RSRC, RSRC_STRING_LENGTH)) {
+				else if (!memcmp(buffer+RSRC_OFFSET, OPTS_RSRC, RSRC_STRING_LENGTH)) {
 					out_response_code = decode_parms((char *) buffer);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_response_code = decode_cam_calibration((char *) buffer, LEFT_CAMERA_ID);
+					out_response_code = decode_cam_calibration((char *) buffer, LEFT_CAM);
+				}
+				else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
+					out_response_code = decode_cam_calibration((char *) buffer, RIGHT_CAM);
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, STRT_RSRC, RSRC_STRING_LENGTH))
 				{
@@ -248,6 +253,11 @@ void ipc_control_update() {
 					if (game_state != IDLE_GS) end_game();
 					else if (drill_state != IDLE_DS) end_drill();
 				}
+				else {
+					LOG_WARNING("Unrecognized PUT resource: %s", buffer);
+					out_response_code = BAD_REQUEST;
+				}
+
 				break;
 			/*
 			handle responses when requests are made.
@@ -256,6 +266,7 @@ void ipc_control_update() {
 			*/
 			default:
 				LOG_DEBUG("Unrecognized request: %s", buffer);
+				out_response_code = BAD_REQUEST;
 		}
 
 		// send response

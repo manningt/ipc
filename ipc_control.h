@@ -8,7 +8,7 @@ extern "C" {
 #include <pthread.h>
 
 //-=-=- start of exported defines
-#define MAX_MESSAGE_SIZE 128
+#define MAX_MESSAGE_SIZE 252
 
 #define RSRC_STRING_LENGTH 4
 #define RSRC_OFFSET 4
@@ -24,7 +24,8 @@ extern "C" {
 #define PAUS_RSRC "PAUS"
 #define RESU_RSRC "RESU"
 #define MODE_RSRC "MODE"
-#define LDSH_RSRC "LDSH"  //level, delay, speed, height - can be changed on the fly
+#define OPTS_RSRC "OPTS"  //drill & game options: level, delay, speed, height can be changed on the fly
+#define GOPT_RSRC "GOPT"  //game options - can be changed on the fly
 #define LCAM_RSRC "LCAM"  //left cam
 #define RCAM_RSRC "RCAM"  //right cam
 
@@ -44,11 +45,21 @@ extern "C" {
 #define DOUBLES_PARAM "doubles" //single or double mode
 #define TIEBREAKER_PARAM "tiebreaker"
 #define SIM_MODE_PARAM "z_sim"  //used to set/clear simulation mode
-// drill & game parameters
+// drill & game options 
 #define LEVEL_PARAM "level"
 #define SPEED_PARAM "speed"
 #define DELAY_PARAM "delay"
 #define HEIGHT_PARAM "height"
+#define GRUNTS_PARAM "grunts"			// when enabled, Boomer grunts almost every time it throws a ball, in game or drill or workout mode.
+               // It doesnt grunt in Game mode if it is just tossing a ball for the player to serve.
+					// If grunt is enabled, it grunts louder if it throws the ball faster.
+// game options
+#define POINTS_DELAY_PARAM "ptDelay"	 	//increase/decrease time between points in seconds
+#define RUN_REDUCE_PARAM "run"					//reduce running
+#define SERVE_MODE_PARAM "servMode"				//No Serves, All Serves, Alternative Serves
+#define NO_SERVES 2
+#define ALL_SERVES 1
+#define ALTERNATE_SERVES 0
 // game statistics
 #define BOOMER_POINTS_PARAM "1b_pts"
 #define PLAYER_POINTS_PARAM "2p_pts"
@@ -57,10 +68,12 @@ extern "C" {
 #define BOOMER_SETS_PARAM "5b_sets"
 #define PLAYER_SETS_PARAM "6p_sets"
 
-#define NUM_CAM_CALIB_POINTS 7
+#define NUM_CAM_CALIB_POINTS 13
+//!NOTE: Dave wants 13; with only 10 then FAR_SERVICE_LEFT/CENTER/RIGHT aren't included
 #define POINT_START_CHAR 'a'
-#define LEFT_CAMERA_ID 0
-#define RIGHT_CAMERA_ID 1
+#define NUM_CAMERAS 2
+#define LEFT_CAM 0
+#define RIGHT_CAM 1
 
 #define RESP_OK 200
 #define BAD_REQUEST 400  //used if the message decode fails
@@ -85,22 +98,21 @@ typedef struct ipc_control_statistics {
 	uint32_t num_bad_msgs;
 } ipc_control_statistics_t;
 
-// the following are placeholders for the camera calibration
-typedef struct point {
-	uint32_t x;
-	uint32_t y;
-} point_t;
-typedef struct cam_calib_pts {
-	point_t pt[7];
-	// point_t near_base_left; // Near baseline, left singles sideline (bottom left corner of singles court)
-	// point_t near_base_right; 
-	// point_t near_service_left; // Near service line, left singles sideline
-	// point_t near_service_center; //Near service line, center line (typically called the "T")
-	// point_t near_service_right;
-	// point_t far_base_left; // Far baseline, left singles sideline (Upper left corner of singles court)
-	// point_t far_base_right;
-} cam_calib_pts_t;
-cam_calib_pts_t cam_calib_pts[2];
+
+#define NEAR_BASE_LEFT 0			// Near baseline, left singles sideline (bottom left corner of singles court)
+#define NEAR_BASE_RIGHT 1 
+#define NEAR_SERVICE_LEFT 2		// Near service line, left singles sideline
+#define NEAR_SERVICE_CENTER 3		//Near service line, center line (typically called the "T")
+#define NEAR_SERVICE_RIGHT 4
+#define FAR_BASE_LEFT 5				// Far baseline, left singles sideline (Upper left corner of singles court)
+#define FAR_BASE_RIGHT 6
+//===
+#define NET_LEFT     7
+#define NET_CENTER    8
+#define NET_RIGHT    9
+#define FAR_SERVICE_LEFT     10
+#define FAR_SERVICE_CENTER    11
+#define FAR_SERVICE_RIGHT    12
 
 
 // the following is global so they can be read by any of the sessions (ipc channels)

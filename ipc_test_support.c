@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "ipc_test_support.h"
+#include "ipc_control.h"
 
 uint8_t boomer_level = 2;
 int16_t delay_mod = 0; 
@@ -12,9 +13,10 @@ uint8_t game_state = IDLE_GS;
 uint8_t drill_state = IDLE_DS;
 
 bool doubles_mode = false;
-bool FAKE_tiebreak_mode = false;
+bool tiebreak_mode = false;
 bool simulation_mode = false;
 
+double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2] = {0};
 
 uint32_t soft_fault = 0;
 uint32_t hard_fault = 0;
@@ -25,11 +27,10 @@ void start_game()
 	extern uint8_t boomer_level;
 	extern uint8_t game_state;
 	extern bool doubles_mode;
-	extern bool FAKE_tiebreak_mode;
 
 	game_state = NON_IDLE_GS;
-	printf("Starting Game - Doubles: %d, TieBreaker: %d, Level: %d\n", \
-		doubles_mode, FAKE_tiebreak_mode, boomer_level);
+	printf("Starting Game - TieBreaker: %d, Level: %d\n", \
+		tiebreak_mode, boomer_level);
 }
 void end_game()
 {
