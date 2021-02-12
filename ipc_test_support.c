@@ -20,6 +20,18 @@ bool run_reduce_opt;
 uint8_t game_point_delay_opt;
 bool grunts_opt = true;
 
+// game statistics
+bool player_serve;
+uint8_t player_sets;
+uint8_t boomer_sets;
+uint8_t player_games;
+uint8_t boomer_games;
+uint8_t player_points;
+uint8_t boomer_points;
+uint8_t player_tie_points;
+uint8_t boomer_tie_points;
+uint64_t game_start_time;
+
 double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2] = {0};
 
 uint32_t soft_fault = 0;

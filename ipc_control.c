@@ -39,6 +39,19 @@ extern uint32_t hard_fault;
 
 extern double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2];
 
+// game statistics
+extern bool player_serve;
+extern uint8_t player_sets;
+extern uint8_t boomer_sets;
+extern uint8_t player_games;
+extern uint8_t boomer_games;
+extern uint8_t player_points;
+extern uint8_t boomer_points;
+extern uint8_t player_tie_points;
+extern uint8_t boomer_tie_points;
+extern uint64_t game_start_time;
+
+
 static uint8_t ipc_control_initialized = 0;
 static ipc_transport_class_t ipc_transport_desc[2] = {0};
 
@@ -199,6 +212,12 @@ int encode_cam_calibration(char *out_msg_params, uint8_t camera_id) {
 	return strlen(out_msg_params);
 }
 
+int encode_game_stats(char *out_msg_params) {
+	return sprintf(out_msg_params, "%s:%llu,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
+	GAME_START_TIME, game_start_time, SERVER, player_serve, BOOMER_SETS_PARAM, boomer_sets, PLAYER_SETS_PARAM, player_sets, \
+	BOOMER_GAMES_PARAM, boomer_games, PLAYER_GAMES_PARAM, player_games, BOOMER_POINTS_PARAM, boomer_points, \
+	PLAYER_POINTS_PARAM, player_points, BOOMER_TIEPOINTS_PARAM, boomer_tie_points, PLAYER_TIEPOINTS_PARAM, player_tie_points); 
+}
 
 void ipc_control_update() {
 	if (ipc_msg_poll(&ipc_transport_desc[0]))
@@ -238,6 +257,9 @@ void ipc_control_update() {
 				}
 				else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
 					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, RIGHT_CAM);
+				}
+				else if (!memcmp(buffer+RSRC_OFFSET, GAME_RSRC, RSRC_STRING_LENGTH)) {
+					out_msg_params_len = encode_game_stats((char *)out_msg_params);
 				}
 				else {
 					LOG_WARNING("Unrecognized GET resource: %s", buffer);

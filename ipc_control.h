@@ -25,9 +25,9 @@ extern "C" {
 #define RESU_RSRC "RESU"
 #define MODE_RSRC "MODE"
 #define OPTS_RSRC "OPTS"  //drill & game options: level, delay, speed, height can be changed on the fly
-#define GOPT_RSRC "GOPT"  //game options - can be changed on the fly
 #define LCAM_RSRC "LCAM"  //left cam
 #define RCAM_RSRC "RCAM"  //right cam
+#define GAME_RSRC "GAME"  //game statistics
 
 // #define MODE_E_UNKNOWN 0
 #define GAME_MODE_E 1
@@ -61,12 +61,16 @@ extern "C" {
 #define PLAYER_ALL_SERVES_E 1
 #define ALTERNATE_SERVES_E 0
 // game statistics
-#define BOOMER_POINTS_PARAM "1b_pts"
-#define PLAYER_POINTS_PARAM "2p_pts"
+#define GAME_START_TIME "time"
+#define SERVER "server"
+#define BOOMER_SETS_PARAM "1b_sets"
+#define PLAYER_SETS_PARAM "2p_sets"
 #define BOOMER_GAMES_PARAM "3b_games"
 #define PLAYER_GAMES_PARAM "4p_games"
-#define BOOMER_SETS_PARAM "5b_sets"
-#define PLAYER_SETS_PARAM "6p_sets"
+#define BOOMER_POINTS_PARAM "5b_pts"
+#define PLAYER_POINTS_PARAM "6p_pts"
+#define BOOMER_TIEPOINTS_PARAM "7b_t_pts"
+#define PLAYER_TIEPOINTS_PARAM "8p_t_pts"
 
 #define NUM_CAM_CALIB_POINTS 13
 //!NOTE: Dave wants 13; with only 10 then FAR_SERVICE_LEFT/CENTER/RIGHT aren't included
