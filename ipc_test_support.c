@@ -12,9 +12,13 @@ uint8_t speed_mod = 100;
 uint8_t game_state = IDLE_GS;
 uint8_t drill_state = IDLE_DS;
 
-bool doubles_mode = false;
-bool tiebreak_mode = false;
 bool simulation_mode = false;
+bool tie_breaker_only_opt = false;
+bool all_player_serve_opt = false;
+bool all_boomer_serve_opt = true;
+bool run_reduce_opt;
+uint8_t game_point_delay_opt;
+bool grunts_opt = true;
 
 double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2] = {0};
 
@@ -29,8 +33,9 @@ void start_game()
 	extern bool doubles_mode;
 
 	game_state = NON_IDLE_GS;
-	printf("Starting Game - TieBreaker: %d, Level: %d\n", \
-		tiebreak_mode, boomer_level);
+	printf("Starting Game - TieBreaker: %d, Level: %d, AllPlayerServe: %d, AllBoomerServe: %d, ReduceRun: %d, DelayAfterPoint: %d, Grunts: %d\n", \
+		tie_breaker_only_opt, boomer_level, all_player_serve_opt, all_boomer_serve_opt, run_reduce_opt, game_point_delay_opt, grunts_opt);
+
 }
 void end_game()
 {

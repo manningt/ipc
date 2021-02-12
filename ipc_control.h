@@ -51,15 +51,15 @@ extern "C" {
 #define DELAY_PARAM "delay"
 #define HEIGHT_PARAM "height"
 #define GRUNTS_PARAM "grunts"			// when enabled, Boomer grunts almost every time it throws a ball, in game or drill or workout mode.
-               // It doesnt grunt in Game mode if it is just tossing a ball for the player to serve.
-					// If grunt is enabled, it grunts louder if it throws the ball faster.
+        // It doesnt grunt in Game mode if it is just tossing a ball for the player to serve.
+				// If grunt is enabled, it grunts louder if it throws the ball faster.
 // game options
 #define POINTS_DELAY_PARAM "ptDelay"	 	//increase/decrease time between points in seconds
-#define RUN_REDUCE_PARAM "run"					//reduce running
-#define SERVE_MODE_PARAM "servMode"				//No Serves, All Serves, Alternative Serves
-#define NO_SERVES 2
-#define ALL_SERVES 1
-#define ALTERNATE_SERVES 0
+#define RUN_REDUCE_PARAM "reduceRun"		//reduce running
+#define SERVE_MODE_PARAM "wServes"			//server for game: No Serves, All Serves, Alternative Serves
+#define BOOMER_ALL_SERVES_E 2
+#define PLAYER_ALL_SERVES_E 1
+#define ALTERNATE_SERVES_E 0
 // game statistics
 #define BOOMER_POINTS_PARAM "1b_pts"
 #define PLAYER_POINTS_PARAM "2p_pts"

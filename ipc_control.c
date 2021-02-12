@@ -22,13 +22,17 @@
 extern uint8_t game_state, drill_state;
 #define BASE_ACTIVE ((game_state != IDLE_GS) || (drill_state != IDLE_DS))
 
-extern bool doubles_mode;
-extern bool tiebreak_mode;
 extern bool simulation_mode;
+extern bool tie_breaker_only_opt;
+extern bool all_player_serve_opt;
+extern bool all_boomer_serve_opt;
+extern bool run_reduce_opt;
+extern int8_t game_point_delay_opt;
+extern bool grunts_opt;
 
 extern uint8_t boomer_level, speed_mod;
 extern int8_t height_mod;
-extern int16_t delay_mod;
+extern uint16_t delay_mod;
 
 extern uint32_t soft_fault;
 extern uint32_t hard_fault;
@@ -67,9 +71,9 @@ int encode_status(char *out_msg_params) {
 }
 
 int encode_mode(char *out_msg_params) {
-	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
+	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
 		MODE_PARAM, mode_settings.mode, ID_PARAM, mode_settings.drill_workout_id, STEP_PARAM, mode_settings.drill_step, \
-		DOUBLES_PARAM, doubles_mode, TIEBREAKER_PARAM, tiebreak_mode, SIM_MODE_PARAM, simulation_mode);
+		TIEBREAKER_PARAM, tie_breaker_only_opt, SIM_MODE_PARAM, simulation_mode);
 }
 
 int decode_mode(char * buffer) {
@@ -90,10 +94,8 @@ int decode_mode(char * buffer) {
 			mode_settings.drill_workout_id = atoi(value_ptr);
 		else if (key_ptr[0] == STEP_PARAM[0])
 			mode_settings.drill_step = atoi(value_ptr);
-		else if (key_ptr[0] == DOUBLES_PARAM[0])
-			doubles_mode = atoi(value_ptr);
 		else if (key_ptr[0] == TIEBREAKER_PARAM[0])
-			tiebreak_mode = atoi(value_ptr);
+			tie_breaker_only_opt = atoi(value_ptr);
 		else if (key_ptr[0] == SIM_MODE_PARAM[0])
 			simulation_mode = atoi(value_ptr);
 		else LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
@@ -102,8 +104,15 @@ int decode_mode(char * buffer) {
 	return RESP_OK;
 }
 int encode_parms(char *out_msg_params) {
-	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d", \
-		LEVEL_PARAM, boomer_level, DELAY_PARAM, delay_mod, HEIGHT_PARAM, height_mod, SPEED_PARAM, speed_mod);
+	int serve_mode_enum = ALTERNATE_SERVES_E;
+	if (all_player_serve_opt)
+		serve_mode_enum = PLAYER_ALL_SERVES_E;
+	if (all_boomer_serve_opt)
+		serve_mode_enum = BOOMER_ALL_SERVES_E;
+	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
+		LEVEL_PARAM, boomer_level, DELAY_PARAM, delay_mod, HEIGHT_PARAM, height_mod, SPEED_PARAM, speed_mod,\
+		SERVE_MODE_PARAM, serve_mode_enum, RUN_REDUCE_PARAM, run_reduce_opt, \
+		POINTS_DELAY_PARAM, game_point_delay_opt, GRUNTS_PARAM, grunts_opt);
 }
 
 int decode_parms(char * buffer) {
@@ -126,6 +135,21 @@ int decode_parms(char * buffer) {
 			height_mod = (int8_t) atoi(value_ptr);
 		else if (key_ptr[0] == DELAY_PARAM[0])
 			delay_mod = (int16_t) atoi(value_ptr);
+		else if (key_ptr[0] == SERVE_MODE_PARAM[0]) {
+			int serve_enum = atoi(value_ptr);
+			all_boomer_serve_opt = false;
+			all_player_serve_opt = false;
+			if (serve_enum == PLAYER_ALL_SERVES_E)
+				all_player_serve_opt = true;
+			if (serve_enum == BOOMER_ALL_SERVES_E)
+				all_boomer_serve_opt = true;
+		}
+		else if (key_ptr[0] == RUN_REDUCE_PARAM[0])
+			run_reduce_opt = (bool) atoi(value_ptr);
+		else if (key_ptr[0] == POINTS_DELAY_PARAM[0])
+			game_point_delay_opt = (uint8_t) atoi(value_ptr);			
+		else if (key_ptr[0] == GRUNTS_PARAM[0])
+			grunts_opt = (bool) atoi(value_ptr);			
 		else
 			LOG_DEBUG("Unrecognized key: %s in: %s\n", item_ptr, buffer);
 		item_ptr = strtok_r (NULL, "," , &end_item_ptr);
