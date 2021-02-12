@@ -26,18 +26,19 @@ extern bool simulation_mode;
 extern bool tie_breaker_only_opt;
 extern bool all_player_serve_opt;
 extern bool all_boomer_serve_opt;
-extern bool run_reduce_opt;
-extern int8_t game_point_delay_opt;
-extern bool grunts_opt;
+// !!TODO: need to reference the real variables when it becomes available
+// for the 4 variables below:
+bool run_reduce_opt;
+int8_t game_point_delay_opt;
+bool grunts_opt;
+double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2];
 
 extern uint8_t boomer_level, speed_mod;
 extern int8_t height_mod;
-extern uint16_t delay_mod;
+extern int16_t delay_mod;
 
-extern uint32_t soft_fault;
-extern uint32_t hard_fault;
-
-extern double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2];
+uint32_t soft_fault;
+uint32_t hard_fault;
 
 // game statistics
 extern bool player_serve;
