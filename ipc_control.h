@@ -27,7 +27,8 @@ extern "C" {
 #define OPTS_RSRC "OPTS"  //drill & game options: level, delay, speed, height can be changed on the fly
 #define LCAM_RSRC "LCAM"  //left cam
 #define RCAM_RSRC "RCAM"  //right cam
-#define GAME_RSRC "GAME"  //game statistics
+#define SCOR_RSRC "SCOR"  //player scores
+#define IPCS_RSRC "IPCS"  //game IPC statistics
 
 // #define MODE_E_UNKNOWN 0
 #define GAME_MODE_E 1
@@ -60,20 +61,27 @@ extern "C" {
 #define BOOMER_ALL_SERVES_E 2
 #define PLAYER_ALL_SERVES_E 1
 #define ALTERNATE_SERVES_E 0
-// game statistics
+// game statistics (read-only - never decoded)
 #define GAME_START_TIME "time"
 #define SERVER "server"
-#define BOOMER_SETS_PARAM "1b_sets"
-#define PLAYER_SETS_PARAM "2p_sets"
-#define BOOMER_GAMES_PARAM "3b_games"
-#define PLAYER_GAMES_PARAM "4p_games"
-#define BOOMER_POINTS_PARAM "5b_pts"
-#define PLAYER_POINTS_PARAM "6p_pts"
-#define BOOMER_TIEPOINTS_PARAM "7b_t_pts"
-#define PLAYER_TIEPOINTS_PARAM "8p_t_pts"
+#define BOOMER_SETS_PARAM "b_sets"
+#define PLAYER_SETS_PARAM "p_sets"
+#define BOOMER_GAMES_PARAM "b_games"
+#define PLAYER_GAMES_PARAM "p_games"
+#define BOOMER_POINTS_PARAM "b_pts"
+#define PLAYER_POINTS_PARAM "p_pts"
+#define BOOMER_TIEPOINTS_PARAM "b_t_pts"
+#define PLAYER_TIEPOINTS_PARAM "p_t_pts"
+// IPC statistics:
+#define IPC_0_NUM_READS_PARAM "0_rd"
+#define IPC_0_NUM_WRITES_PARAM "0_wr"
+#define IPC_0_NUM_BAD_PARAM "0_bad"
+#define IPC_1_NUM_READS_PARAM "1_rd"
+#define IPC_1_NUM_WRITES_PARAM "1_wr"
+#define IPC_1_NUM_BAD_PARAM "1_bad"
+
 
 #define NUM_CAM_CALIB_POINTS 13
-//!NOTE: Dave wants 13; with only 10 then FAR_SERVICE_LEFT/CENTER/RIGHT aren't included
 #define POINT_START_CHAR 'a'
 #define NUM_CAMERAS 2
 #define LEFT_CAM 0
@@ -86,6 +94,12 @@ extern "C" {
 #define METHOD_NOT_ALLOWED 405
 #define LOCKED 423    // used for PUT mode if the boomer_base is Active
 #define UNPROCESSABLE_ENTITY 422  //used for encode errors - there was not a great error response for this
+
+#define CTRL_TRANSPRT 0
+#define UI_TRANSPRT 1
+#define BASE_NAME "Base"
+#define CTRL_NAME "Ctrl"
+#define UI_NAME "Ui"
 
 //-=-=- end of exported defines
 
@@ -117,11 +131,6 @@ typedef struct ipc_control_statistics {
 #define FAR_SERVICE_LEFT     10
 #define FAR_SERVICE_CENTER    11
 #define FAR_SERVICE_RIGHT    12
-
-
-// the following is global so they can be read by any of the sessions (ipc channels)
-b_mode_settings_t mode_settings;
-ipc_control_statistics_t ipc_control_statistics[2];
 
 void ipc_control_init();
 void ipc_control_update();

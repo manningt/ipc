@@ -26,8 +26,8 @@ extern bool simulation_mode;
 extern bool tie_breaker_only_opt;
 extern bool all_player_serve_opt;
 extern bool all_boomer_serve_opt;
-// !!TODO: need to reference the real variables when it becomes available
-// for the 4 variables below:
+
+// !!TODO: need to reference the real variables when it becomes available for the 4 variables below:
 bool run_reduce_opt;
 int8_t game_point_delay_opt;
 bool grunts_opt;
@@ -53,29 +53,26 @@ extern uint8_t boomer_tie_points;
 extern uint64_t game_start_time;
 
 
-static uint8_t ipc_control_initialized = 0;
 static ipc_transport_class_t ipc_transport_desc[2] = {0};
+static b_mode_settings_t mode_settings = {0};
+static ipc_control_statistics_t ipc_control_statistics[2] = {0};
 
 void ipc_control_init()
 {
-	char * my_name = "Base";
-	char * ui_name = "Ui";
-	char * ctrl_name = "Ctrl";
-
-	if (ipc_control_initialized == 0)
+	if (mode_settings.mode == 0)
+	// mode is used to detect whether ipc_control has been initialized
 	{
 		mode_settings.mode = GAME_MODE_E;
-		ipc_control_statistics[0].num_bad_msgs = 0;
-		ipc_control_statistics[0].num_read_msgs = 0;
-		ipc_control_statistics[0].num_write_msgs = 0;
+		if (ipc_transport_init(&ipc_transport_desc[CTRL_TRANSPRT], BASE_NAME, CTRL_NAME) < 0)
+			LOG_ERROR( "control ipc init failed!");
+		else
+			LOG_DEBUG( "control ipc init OK.");
+		if (ipc_transport_init(&ipc_transport_desc[UI_TRANSPRT], BASE_NAME, UI_NAME) < 0)
+			LOG_ERROR( "UI ipc init failed!");
+		else
+			LOG_DEBUG( "UI ipc init OK.");
+		mode_settings.mode = GAME_MODE_E;
 	}
-	if (ipc_transport_init(&ipc_transport_desc[0], my_name, ctrl_name) < 0)
-	{
-		LOG_ERROR( "control ipc init failed!");
-	}
-	else
-		LOG_DEBUG( "control ipc init OK.");
-	ipc_control_initialized = 1;
 }
 
 int encode_status(char *out_msg_params) {
@@ -213,124 +210,139 @@ int encode_cam_calibration(char *out_msg_params, uint8_t camera_id) {
 	return strlen(out_msg_params);
 }
 
-int encode_game_stats(char *out_msg_params) {
+int encode_game_score(char *out_msg_params) {	
 	return sprintf(out_msg_params, "%s:%llu,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
 	GAME_START_TIME, game_start_time, SERVER, player_serve, BOOMER_SETS_PARAM, boomer_sets, PLAYER_SETS_PARAM, player_sets, \
 	BOOMER_GAMES_PARAM, boomer_games, PLAYER_GAMES_PARAM, player_games, BOOMER_POINTS_PARAM, boomer_points, \
 	PLAYER_POINTS_PARAM, player_points, BOOMER_TIEPOINTS_PARAM, boomer_tie_points, PLAYER_TIEPOINTS_PARAM, player_tie_points); 
 }
 
+int encode_ipc_stats(char *out_msg_params) {
+	return sprintf(out_msg_params, "%s:%d,%s:%d,%s:%d,%s:%d,%s:%d,%s:%d", \
+	IPC_0_NUM_READS_PARAM, ipc_control_statistics[0].num_read_msgs, IPC_0_NUM_WRITES_PARAM, ipc_control_statistics[0].num_write_msgs, \
+	IPC_0_NUM_BAD_PARAM, ipc_control_statistics[0].num_bad_msgs, IPC_1_NUM_READS_PARAM, ipc_control_statistics[1].num_read_msgs, \
+	IPC_1_NUM_WRITES_PARAM, ipc_control_statistics[1].num_write_msgs,	IPC_1_NUM_BAD_PARAM, ipc_control_statistics[1].num_bad_msgs); 
+}
+
 void ipc_control_update() {
-	if (ipc_msg_poll(&ipc_transport_desc[0]))
+	for (int intf_id = 0; intf_id < 2; intf_id++)
 	{
-		// buffer is used for receiving messages and for concat the outbound message
-		uint8_t buffer[MAX_MESSAGE_SIZE] = {0};
-
-		int byte_count_rcvd;
-		int byte_count_sent;
-		//the message parameters are carried in a json-like string
-		uint8_t out_msg_params[MAX_MESSAGE_SIZE] = {0};
-		int out_msg_params_len = 0;
-		int out_response_code = RESP_OK;
-		int out_buffer_len;
-		
-		byte_count_rcvd = ipc_read(&ipc_transport_desc[0], buffer, sizeof(buffer));
-		if (byte_count_rcvd > 0) ipc_control_statistics[0].num_read_msgs++;
-		if (byte_count_rcvd < 1)
+		if (ipc_msg_poll(&ipc_transport_desc[intf_id]))
 		{
-		// TODO: how to handle receive errors
-			LOG_DEBUG("read pipe closed.");
-		}
-		switch(buffer[0]) {
-			case 'G':
-				//handle GET
-				if (!memcmp(buffer+RSRC_OFFSET, STAT_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_status((char *)out_msg_params);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_mode((char *)out_msg_params);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, OPTS_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_parms((char *)out_msg_params);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, LEFT_CAM);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_cam_calibration((char *)out_msg_params, RIGHT_CAM);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, GAME_RSRC, RSRC_STRING_LENGTH)) {
-					out_msg_params_len = encode_game_stats((char *)out_msg_params);
-				}
-				else {
-					LOG_WARNING("Unrecognized GET resource: %s", buffer);
-					out_response_code = BAD_REQUEST;
-				}
-				break;
-			case 'P':
-				//handle PUT
-				if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
-					// can only change the mode config params if boomer is not active
-					if (BASE_ACTIVE == 0)
-						out_response_code = decode_mode((char *) buffer);
-					else
-						out_response_code = LOCKED;
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, OPTS_RSRC, RSRC_STRING_LENGTH)) {
-					out_response_code = decode_parms((char *) buffer);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_response_code = decode_cam_calibration((char *) buffer, LEFT_CAM);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
-					out_response_code = decode_cam_calibration((char *) buffer, RIGHT_CAM);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, STRT_RSRC, RSRC_STRING_LENGTH))
-				{
-					if (mode_settings.mode == GAME_MODE_E) start_game();
-					else if (mode_settings.mode == DRILL_MODE_E)
-					{
-						load_drill( (int16_t) mode_settings.drill_workout_id);
-						start_drill();
+			// buffer is used for receiving messages and for concat the outbound message
+			uint8_t buffer[MAX_MESSAGE_SIZE] = {0};
+
+			int byte_count_rcvd;
+			int byte_count_sent;
+			//the message parameters are carried in a json-like string
+			uint8_t out_msg_params[MAX_MESSAGE_SIZE] = {0};
+			int out_msg_params_len = 0;
+			int out_response_code = RESP_OK;
+			int out_buffer_len;
+			
+			byte_count_rcvd = ipc_read(&ipc_transport_desc[intf_id], buffer, sizeof(buffer));
+			if (byte_count_rcvd > 0) ipc_control_statistics[intf_id].num_read_msgs++;
+			if (byte_count_rcvd < 1)
+			{
+			// TODO: how to handle receive errors
+				LOG_DEBUG("read pipe closed.");
+			}
+			switch(buffer[0]) {
+				case 'G':
+					//handle GET
+					if (!memcmp(buffer+RSRC_OFFSET, STAT_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_status((char *)out_msg_params);
 					}
-					else LOG_ERROR("Invalid mode on start: %d", mode_settings.mode);
-				}
-				else if (!memcmp(buffer+RSRC_OFFSET, STOP_RSRC, RSRC_STRING_LENGTH))
-				{
-					if (game_state != IDLE_GS) end_game();
-					else if (drill_state != IDLE_DS) end_drill();
-				}
-				else {
-					LOG_WARNING("Unrecognized PUT resource: %s", buffer);
+					else if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_mode((char *)out_msg_params);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, OPTS_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_parms((char *)out_msg_params);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_cam_calibration((char *)out_msg_params, LEFT_CAM);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_cam_calibration((char *)out_msg_params, RIGHT_CAM);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, SCOR_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_game_score((char *)out_msg_params);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, IPCS_RSRC, RSRC_STRING_LENGTH)) {
+						out_msg_params_len = encode_ipc_stats((char *)out_msg_params);
+					}
+					else {
+						LOG_WARNING("Unrecognized GET resource: %s", buffer);
+						out_response_code = BAD_REQUEST;
+					}
+					break;
+				case 'P':
+					//handle PUT
+					if (!memcmp(buffer+RSRC_OFFSET, MODE_RSRC, RSRC_STRING_LENGTH)) {
+						// can only change the mode config params if boomer is not active
+						if (BASE_ACTIVE == 0)
+							out_response_code = decode_mode((char *) buffer);
+						else
+							out_response_code = LOCKED;
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, OPTS_RSRC, RSRC_STRING_LENGTH)) {
+						out_response_code = decode_parms((char *) buffer);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, LCAM_RSRC, RSRC_STRING_LENGTH)) {
+						out_response_code = decode_cam_calibration((char *) buffer, LEFT_CAM);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, RCAM_RSRC, RSRC_STRING_LENGTH)) {
+						out_response_code = decode_cam_calibration((char *) buffer, RIGHT_CAM);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, STRT_RSRC, RSRC_STRING_LENGTH))
+					{
+						if (mode_settings.mode == GAME_MODE_E) start_game();
+						else if (mode_settings.mode == DRILL_MODE_E)
+						{
+							load_drill( (int16_t) mode_settings.drill_workout_id);
+							start_drill();
+						}
+						else LOG_ERROR("Invalid mode on start: %d", mode_settings.mode);
+					}
+					else if (!memcmp(buffer+RSRC_OFFSET, STOP_RSRC, RSRC_STRING_LENGTH))
+					{
+						if (game_state != IDLE_GS) end_game();
+						else if (drill_state != IDLE_DS) end_drill();
+					}
+					else {
+						LOG_WARNING("Unrecognized PUT resource: %s", buffer);
+						out_response_code = BAD_REQUEST;
+					}
+
+					break;
+				/*
+				handle responses when requests are made.
+				case 'R':
+					break;
+				*/
+				default:
+					LOG_DEBUG("Unrecognized request: %s", buffer);
 					out_response_code = BAD_REQUEST;
-				}
+			}
 
-				break;
-			/*
-			handle responses when requests are made.
-			case 'R':
-				break;
-			*/
-			default:
-				LOG_DEBUG("Unrecognized request: %s", buffer);
-				out_response_code = BAD_REQUEST;
-		}
+			if (out_response_code == BAD_REQUEST)
+				ipc_control_statistics[intf_id].num_bad_msgs++;
+			// send response
+			out_buffer_len = sprintf((char *)buffer, "%s  %3d", RSP_METHOD, out_response_code);
+			if (out_msg_params_len > 0)
+			{
+				strcat((char *) buffer, (char *)out_msg_params);
+				out_buffer_len += out_msg_params_len;
+			}
+			byte_count_sent = ipc_write(&ipc_transport_desc[intf_id], buffer, out_buffer_len);
 
-		// send response
-		out_buffer_len = sprintf((char *)buffer, "%s  %3d", RSP_METHOD, out_response_code);
-		if (out_msg_params_len > 0)
-		{
-			strcat((char *) buffer, (char *)out_msg_params);
-			out_buffer_len += out_msg_params_len;
+			if (byte_count_sent < out_buffer_len)
+			{
+				sprintf(plog_string, "Send Status response failed: ipc_send_code: %d", byte_count_sent);
+				LOG_ERROR( plog_string);
+				// TODO: handle IPC send errors
+			}
+			else ipc_control_statistics[intf_id].num_write_msgs++;
 		}
-		byte_count_sent = ipc_write(&ipc_transport_desc[0], buffer, out_buffer_len);
-
-		if (byte_count_sent < out_buffer_len)
-		{
-			sprintf(plog_string, "Send Status response failed: ipc_send_code: %d", byte_count_sent);
-			LOG_ERROR( plog_string);
-			// TODO: handle IPC send errors
-		}
-		else ipc_control_statistics->num_write_msgs++;
 	}
 }
