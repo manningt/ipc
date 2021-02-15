@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "ipc_test_support.h"
-#include "ipc_control.h"
+#include "ipc_control.h"  //for num_cameras * calibration points <-- should be removed
 
 uint8_t boomer_level = 2;
 int16_t delay_mod = 0; 
@@ -37,6 +37,15 @@ double cam_calib_pts[NUM_CAMERAS][NUM_CAM_CALIB_POINTS][2] = {0};
 uint32_t soft_fault = 0;
 uint32_t hard_fault = 0;
 
+uint8_t set_boomer_level(uint8_t setting) {
+	uint8_t rc = 1;
+	if ((setting >= LEVEL_MIN) && (setting <= LEVEL_MAX))
+	{
+		boomer_level = setting;
+		rc = 0;
+	}
+	return rc;
+}
 
 void start_game()
 {
@@ -67,6 +76,7 @@ void resume_game()
 	game_state = IDLE_GS;
 	printf("Resuming Game\n");
 }
+
 void start_drill()
 {
 	extern uint8_t boomer_level, speed_mod;
@@ -87,6 +97,34 @@ void load_drill(int16_t drill_id)
 {
 	printf("Loading Drill: %d\n", drill_id);
 }
+int8_t set_drill_speed(uint8_t setting) {
+	int8_t rc = 1;
+	if ((setting >= SPEED_MIN) && (setting <= SPEED_MAX))
+	{
+		speed_mod = setting;
+		rc = 0;
+	}
+	return rc;
+}
+int8_t set_drill_height(int8_t setting) {
+	int8_t rc = 1;
+	if ((setting >= HEIGHT_MIN) && (setting <= HEIGHT_MAX))
+	{
+		height_mod = setting;
+		rc = 0;
+	}
+	return rc;
+}
+int8_t set_drill_delay(int16_t setting) {
+	int8_t rc = 1;
+	if ((setting >= DELAY_MIN) && (setting <= DELAY_MAX))
+	{
+		delay_mod = setting;
+		rc = 0;
+	}
+	return rc;
+}
+
 
 #ifdef __cplusplus
 }

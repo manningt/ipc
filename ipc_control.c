@@ -138,14 +138,38 @@ int decode_parms(char * buffer) {
 		char *key_ptr = strtok_r(item_ptr, ":", &kv_end);
 		char *value_ptr = strtok_r(NULL, ":", &kv_end);
 		// LOG_DEBUG("key: %s   Value: %s   case: %c\n", key_ptr, value_ptr, key_ptr[0]);
-		if (key_ptr[0] == LEVEL_PARAM[0])
-			boomer_level = (uint8_t) atoi(value_ptr);
-		else if (key_ptr[0] == SPEED_PARAM[0])
-			speed_mod = (uint8_t) atoi(value_ptr);
-		else if (key_ptr[0] == HEIGHT_PARAM[0])
-			height_mod = (int8_t) atoi(value_ptr);
-		else if (key_ptr[0] == DELAY_PARAM[0])
-			delay_mod = (int16_t) atoi(value_ptr);
+		if (key_ptr[0] == LEVEL_PARAM[0]) {
+			// boomer_level = (uint8_t) atoi(value_ptr);
+			if (set_boomer_level((uint8_t) atoi(value_ptr)) != 0)
+			{
+				rc = BAD_REQUEST;
+				break;
+			}
+		}
+		else if (key_ptr[0] == SPEED_PARAM[0]) {
+			// speed_mod = (uint8_t) atoi(value_ptr);
+			if (set_drill_speed((uint8_t) atoi(value_ptr)) != 0)
+			{
+				rc = BAD_REQUEST;
+				break;
+			}
+		}
+		else if (key_ptr[0] == HEIGHT_PARAM[0]) {
+			// height_mod = (int8_t) atoi(value_ptr);
+			if (set_drill_height((int8_t) atoi(value_ptr)) != 0)
+			{
+				rc = BAD_REQUEST;
+				break;
+			}
+		}
+		else if (key_ptr[0] == DELAY_PARAM[0]) {
+			// delay_mod = (int16_t) atoi(value_ptr);
+			if (set_drill_delay((int16_t) atoi(value_ptr)) != 0)
+			{
+				rc = BAD_REQUEST;
+				break;
+			}
+		}
 		else if (key_ptr[0] == SERVE_MODE_PARAM[0]) {
 			int serve_enum = atoi(value_ptr);
 			all_boomer_serve_opt = false;
